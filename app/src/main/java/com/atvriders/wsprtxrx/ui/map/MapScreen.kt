@@ -36,6 +36,10 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import com.atvriders.wsprtxrx.core.SolarTerminator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
 import java.time.Instant
 
 private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
@@ -72,6 +76,11 @@ private fun SpotMap(spots: List<Spot>, bandColors: Map<String, Long>) {
     var lineSource by remember { mutableStateOf<GeoJsonSource?>(null) }
     var termSource by remember { mutableStateOf<GeoJsonSource?>(null) }
 
+    // Fetch the style and inject a globe projection; null means fall back to the
+    // plain (mercator) style URL, so the map always works even if this fails.
+    var styleSpec by remember { mutableStateOf<StyleSpec?>(null) }
+    LaunchedEffect(Unit) { styleSpec = StyleSpec(globeStyleJson()) }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -93,10 +102,13 @@ private fun SpotMap(spots: List<Spot>, bandColors: Map<String, Long>) {
     }
 
     AndroidView(factory = { mapView }) { mv ->
+        val spec = styleSpec ?: return@AndroidView // wait until the style decision is made
         mv.getMapAsync { map ->
             if (map.style == null) {
                 map.cameraPosition = CameraPosition.Builder().target(LatLng(20.0, 0.0)).zoom(1.0).build()
-                map.setStyle(Style.Builder().fromUri(STYLE_URL)) { style ->
+                val builder = spec.json?.let { Style.Builder().fromJson(it) }
+                    ?: Style.Builder().fromUri(STYLE_URL)
+                map.setStyle(builder) { style ->
                     val ps = GeoJsonSource(SRC_POINTS)
                     val ls = GeoJsonSource(SRC_LINES)
                     val ts = GeoJsonSource(SRC_TERM)
@@ -194,4 +206,24 @@ private fun hexColor(argb: Long): String {
     val g = (argb shr 8) and 0xFF
     val b = argb and 0xFF
     return String.format("#%02X%02X%02X", r, g, b)
+}
+
+/** Wraps the (possibly null) resolved style JSON so we can distinguish "still loading". */
+private class StyleSpec(val json: String?)
+
+/**
+ * Downloads the base style and injects a globe projection. Returns null on any failure,
+ * in which case the caller loads the plain style URL (mercator) instead.
+ */
+private suspend fun globeStyleJson(): String? = withContext(Dispatchers.IO) {
+    runCatching {
+        val conn = (URL(STYLE_URL).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 8000
+            readTimeout = 8000
+        }
+        val text = conn.inputStream.bufferedReader().use { it.readText() }
+        val obj = org.json.JSONObject(text)
+        obj.put("projection", org.json.JSONObject().put("type", "globe"))
+        obj.toString()
+    }.getOrNull()
 }
