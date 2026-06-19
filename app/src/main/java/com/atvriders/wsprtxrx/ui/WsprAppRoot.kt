@@ -1,7 +1,11 @@
 package com.atvriders.wsprtxrx.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.adaptive.navigationsuite.ExperimentalMaterial3AdaptiveNavigationSuiteApi
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -46,12 +50,14 @@ fun WsprAppRoot(container: AppContainer, windowSizeClass: WindowSizeClass) {
                 }
             },
         ) {
-            when (current) {
-                Destination.SPOTS -> SpotsScreen(spotsVm, windowSizeClass.widthSizeClass)
-                Destination.MAP -> MapScreen(spotsVm, settings)
-                Destination.CHARTS -> ChartsScreen(spotsVm)
-                Destination.TX -> TxScreen(txVm)
-                Destination.SETTINGS -> SettingsScreen(settingsVm)
+            Box(Modifier.fillMaxSize().statusBarsPadding()) {
+                when (current) {
+                    Destination.SPOTS -> SpotsScreen(spotsVm, windowSizeClass.widthSizeClass)
+                    Destination.MAP -> MapScreen(spotsVm, settings)
+                    Destination.CHARTS -> ChartsScreen(spotsVm)
+                    Destination.TX -> TxScreen(txVm)
+                    Destination.SETTINGS -> SettingsScreen(settingsVm)
+                }
             }
         }
     }

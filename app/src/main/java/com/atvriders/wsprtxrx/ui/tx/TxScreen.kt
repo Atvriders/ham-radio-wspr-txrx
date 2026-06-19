@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.atvriders.wsprtxrx.R
 import com.atvriders.wsprtxrx.core.wspr.WsprMessage
+import com.atvriders.wsprtxrx.ui.Format
 import com.atvriders.wsprtxrx.ui.TxPhase
 import com.atvriders.wsprtxrx.ui.TxViewModel
 
@@ -129,10 +130,15 @@ fun TxScreen(vm: TxViewModel) {
 private fun PowerPicker(power: Int, onSelect: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        OutlinedButton(onClick = { expanded = true }) { Text("Power: $power dBm") }
+        OutlinedButton(onClick = { expanded = true }) {
+            Text("Power: ${Format.powerLabel(power)}")
+        }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             WsprMessage.VALID_POWERS.forEach { p ->
-                DropdownMenuItem(text = { Text("$p dBm") }, onClick = { onSelect(p); expanded = false })
+                DropdownMenuItem(
+                    text = { Text("$p dBm  ·  ${Format.watts(p)}") },
+                    onClick = { onSelect(p); expanded = false },
+                )
             }
         }
     }

@@ -36,4 +36,20 @@ object Format {
     }
 
     fun spotTitle(spot: Spot): String = "${spot.txCall} → ${spot.rxCall}"
+
+    private val DBM_WATTS = mapOf(
+        0 to "1 mW", 3 to "2 mW", 7 to "5 mW", 10 to "10 mW", 13 to "20 mW",
+        17 to "50 mW", 20 to "100 mW", 23 to "200 mW", 27 to "500 mW",
+        30 to "1 W", 33 to "2 W", 37 to "5 W", 40 to "10 W", 43 to "20 W",
+        47 to "50 W", 50 to "100 W", 53 to "200 W", 57 to "500 W", 60 to "1 kW",
+    )
+
+    /** Human-readable power for a dBm value, e.g. 37 → "5 W", 20 → "100 mW". */
+    fun watts(dbm: Int): String = DBM_WATTS[dbm] ?: run {
+        val w = Math.pow(10.0, (dbm - 30) / 10.0)
+        if (w >= 1.0) String.format("%.1f W", w) else String.format("%.0f mW", w * 1000)
+    }
+
+    /** "37 dBm (5 W)" */
+    fun powerLabel(dbm: Int): String = "$dbm dBm (${watts(dbm)})"
 }
