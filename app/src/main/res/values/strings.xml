@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Ham Radio WSPR TX/RX</string>
+
+    <string name="nav_spots">Spots</string>
+    <string name="nav_map">Map</string>
+    <string name="nav_charts">Charts</string>
+    <string name="nav_tx">TX</string>
+    <string name="nav_settings">Settings</string>
+
+    <string name="tx_disclaimer">Audio output only. This generates a WSPR tone for acoustic coupling / VOX into a transceiver. You are responsible for holding a valid licence and for all RF you transmit.</string>
+</resources>

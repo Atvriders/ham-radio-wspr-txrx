@@ -125,6 +125,29 @@ Cross-cutting: a **search bar** (callsign *or* Maidenhead grid) whose value pers
 across Spots / Map / Charts, and a **filter panel** (bands, time range, max distance,
 max power, unique toggle, direction).
 
+### 4.1 Responsive / adaptive layout (required)
+
+The UI must adapt fluidly to screen size and posture — phones, tablets, and folding
+phones (folded and unfolded) — with panels resizing/reflowing dynamically:
+
+- **Navigation** uses `NavigationSuiteScaffold`: bottom navigation bar on **compact**
+  width (phone portrait / folded), navigation **rail** on **medium** width, navigation
+  **drawer** on **expanded** width (tablet / unfolded).
+- **Window size class** (`androidx.compose.material3:material3-window-size-class`)
+  drives breakpoints; layouts recompose on configuration/fold changes automatically.
+- **Two-pane** layouts on medium/expanded width via the material3-adaptive library:
+  - **Spots**: `ListDetailPaneScaffold` — list + spot detail side by side on wide
+    screens, single-pane with navigation on compact.
+  - **Map**: map + filter/spot panel as a supporting pane on wide screens; full-bleed
+    map with a bottom sheet on compact.
+- **Fold awareness**: the adaptive library consumes `WindowInfoTracker` so panes avoid
+  the hinge and respond to book/tabletop postures.
+- All screens use weight/`fillMaxWidth` and size-class checks rather than fixed dp
+  widths so content reflows rather than truncates.
+
+Dependencies: `material3-window-size-class`, `material3-adaptive-navigation-suite`,
+and `androidx.compose.material3.adaptive:{adaptive,adaptive-layout,adaptive-navigation}`.
+
 ---
 
 ## 5. TX Encoder (must be exactly correct)
