@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Ham Radio WSPR TX/RX"
+rootProject.name = "ham-radio-wspr-txrx"
 include(":app")
