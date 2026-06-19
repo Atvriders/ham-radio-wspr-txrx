@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<receptionReports currentSeconds="1700000000">
+<receptionReport receiverCallsign="EA1ABC" receiverLocator="IN52" senderCallsign="K1ABC" senderLocator="FN42" frequency="14097020" flowStartSeconds="1699999800" mode="WSPR" isSender="1" sNR="-21"/>
+<receptionReport receiverCallsign="VK2XYZ" receiverLocator="QF56" senderCallsign="K1ABC" senderLocator="FN42" frequency="14097030" flowStartSeconds="1699999700" mode="WSPR" isSender="1" sNR="-26"/>
+<receptionReport receiverCallsign="JA1QWE" receiverLocator="PM95" senderCallsign="W1AW" senderLocator="FN31" frequency="7040100" flowStartSeconds="1699999600" mode="FT8" isSender="1" sNR="-3"/>
+<activeReceiver callsign="EA1ABC" locator="IN52" frequency="14097000"/>
+</receptionReports>
