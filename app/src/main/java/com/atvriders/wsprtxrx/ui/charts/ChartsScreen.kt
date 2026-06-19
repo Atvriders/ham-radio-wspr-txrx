@@ -3,6 +3,7 @@ package com.atvriders.wsprtxrx.ui.charts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -116,6 +117,7 @@ private fun SnrChart(points: List<SnrPoint>, bandColors: Map<String, Long>) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BandLegend(bands: List<Band>, bandColors: Map<String, Long>) {
     androidx.compose.foundation.layout.FlowRow(
