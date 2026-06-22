@@ -40,6 +40,10 @@ class SettingsStore(private val context: Context) {
         it[Keys.SOURCES] = sources.map(SourceId::name).toSet()
     }
 
+    // TODO(security): the QRZ password is persisted in cleartext in this DataStore.
+    // It is excluded from cloud backup and device transfer (res/xml backup rules), but
+    // it should later be Android Keystore-encrypted (or replaced with the short-lived
+    // QRZ session key) so it isn't stored at rest in plaintext on the device.
     suspend fun setQrz(username: String, password: String) = edit {
         it[Keys.QRZ_USER] = username
         it[Keys.QRZ_PASS] = password

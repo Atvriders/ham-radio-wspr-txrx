@@ -46,25 +46,43 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testReleaseUnitTest --stacktrace
 
-      - name: Assemble release APK
+      - name: Assemble release APK (sideload)
         env:
+          VERSION_CODE: ${{ github.run_number }}
           KEYSTORE_FILE: ${{ steps.keystore.outputs.present == 'true' && format('{0}/release.keystore', runner.temp) || '' }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Stage APK
+      - name: Bundle release AAB (Play upload)
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          KEYSTORE_FILE: ${{ steps.keystore.outputs.present == 'true' && format('{0}/release.keystore', runner.temp) || '' }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Stage artifacts
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/ham-radio-wspr-txrx-${GITHUB_SHA::7}.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/ham-radio-wspr-txrx-${GITHUB_SHA::7}-play.aab"
           ls -l dist
 
-      - name: Upload APK artifact
+      - name: Upload APK artifact (sideload)
         uses: actions/upload-artifact@v4
         with:
           name: ham-radio-wspr-txrx-apk
           path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Upload AAB artifact (Play upload)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ham-radio-wspr-txrx-play-aab
+          path: dist/*.aab
           if-no-files-found: error
 
       - name: Publish release (tags only)

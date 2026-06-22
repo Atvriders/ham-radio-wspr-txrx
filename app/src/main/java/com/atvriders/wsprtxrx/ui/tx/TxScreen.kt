@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -24,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,6 +54,30 @@ fun TxScreen(vm: TxViewModel) {
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) lastLocation(context)?.let { vm.fillGridFromLocation(it.first, it.second) }
+    }
+
+    // B4: show a one-time in-context rationale before the system location dialog.
+    var showLocationRationale by remember { mutableStateOf(false) }
+    if (showLocationRationale) {
+        AlertDialog(
+            onDismissRequest = { showLocationRationale = false },
+            title = { Text("Use your location?") },
+            text = {
+                Text(
+                    "Location is used only to compute your Maidenhead grid on-device; " +
+                        "it is never uploaded.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLocationRationale = false
+                    locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                }) { Text("Allow") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLocationRationale = false }) { Text("Cancel") }
+            },
+        )
     }
 
     Column(
@@ -86,12 +112,13 @@ fun TxScreen(vm: TxViewModel) {
                 modifier = Modifier.weight(1f),
             )
             OutlinedButton(onClick = {
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED
                 ) {
                     lastLocation(context)?.let { vm.fillGridFromLocation(it.first, it.second) }
                 } else {
-                    locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    // Show the rationale first; the system request only fires on Allow.
+                    showLocationRationale = true
                 }
             }) { Text("GPS") }
         }

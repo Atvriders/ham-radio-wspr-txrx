@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Disallow cleartext HTTP for all domains. Every HTTP endpoint the app uses (wspr.live,
+  PSKReporter, QRZ.com, the map style host) is HTTPS already. The RBN raw telnet socket
+  is a plain TCP connection, not HTTP, so it is not governed by this config and keeps
+  working.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
