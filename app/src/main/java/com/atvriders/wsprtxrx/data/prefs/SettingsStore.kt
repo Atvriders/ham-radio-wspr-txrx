@@ -30,6 +30,8 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val recentCalls: List<String> = emptyList(),
     val bandColorOverrides: Map<String, Long> = emptyMap(),
+    /** Per-key epoch-millis of the last rate-limited fetch (e.g. PSKReporter). */
+    val rateLimitStamps: Map<String, Long> = emptyMap(),
 )
 
 class SettingsStore(private val context: Context) {
@@ -71,6 +73,24 @@ class SettingsStore(private val context: Context) {
         )
     }
 
+    /**
+     * Persists the epoch-millis of the last successful fetch for a rate-limited [key]
+     * (e.g. PSKReporter), so the per-key rate limit survives process death / cold starts.
+     * Stored as a JSON map under a single preference key.
+     */
+    suspend fun setRateLimitStamp(key: String, timeMs: Long) {
+        val current = settingsSnapshot().rateLimitStamps.toMutableMap()
+        current[key] = timeMs
+        edit {
+            it[Keys.RATE_LIMIT_STAMPS] = json.encodeToString(
+                MapSerializer(String.serializer(), Long.serializer()), current,
+            )
+        }
+    }
+
+    /** Reads the persisted last-fetch epoch-millis for [key], or null if none. */
+    suspend fun rateLimitStamp(key: String): Long? = settingsSnapshot().rateLimitStamps[key]
+
     private suspend fun settingsSnapshot(): AppSettings =
         context.dataStore.data.first().toSettings()
 
@@ -96,6 +116,11 @@ class SettingsStore(private val context: Context) {
                 json.decodeFromString(MapSerializer(String.serializer(), Long.serializer()), it)
             }.getOrNull()
         } ?: emptyMap(),
+        rateLimitStamps = this[Keys.RATE_LIMIT_STAMPS]?.let {
+            runCatching {
+                json.decodeFromString(MapSerializer(String.serializer(), Long.serializer()), it)
+            }.getOrNull()
+        } ?: emptyMap(),
     )
 
     private object Keys {
@@ -107,6 +132,7 @@ class SettingsStore(private val context: Context) {
         val THEME = stringPreferencesKey("theme")
         val RECENT_CALLS = stringPreferencesKey("recent_calls")
         val BAND_COLORS = stringPreferencesKey("band_colors")
+        val RATE_LIMIT_STAMPS = stringPreferencesKey("rate_limit_stamps")
     }
 
     private companion object {

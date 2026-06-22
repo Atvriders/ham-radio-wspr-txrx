@@ -14,11 +14,21 @@ import okhttp3.Request
  * Fetches reception reports from PSKReporter. PSKReporter enforces a strict query rate
  * limit, so results are cached per query via [rateLimiter] (default 5 minutes). The
  * response is XML; reports are parsed from `<receptionReport .../>` elements.
+ *
+ * Multimode by design: unlike a WSPR-only client, this app intentionally surfaces *all*
+ * reception reports PSKReporter returns (WSPR plus FT8/FT4/CW skimmer spots), and the
+ * RBN source adds CW/FT skimmer data too. We therefore deliberately do NOT add a
+ * `mode=WSPR` filter here — the parsed [Spot.mode] field carries the real mode so the UI
+ * can label/group it. Each report's mode is preserved verbatim.
+ *
+ * Per PSKReporter operator policy we identify ourselves with an [appcontact] parameter
+ * so a mass-deployed client can be contacted before being throttled/blocked.
  */
 class PskReporterSource(
     private val client: OkHttpClient,
     private val rateLimiter: RateLimiter = RateLimiter(5 * 60_000L),
     private val baseUrl: String = "https://retrieve.pskreporter.info/query",
+    private val appContact: String = APP_CONTACT,
 ) : SpotSource {
 
     override val id = SourceId.PSK_REPORTER
@@ -30,6 +40,8 @@ class PskReporterSource(
                 val url = baseUrl.toHttpUrl().newBuilder().apply {
                     addQueryParameter("flowStartSeconds", "-${q.timeRangeMinutes.coerceIn(1, 1440) * 60}")
                     addQueryParameter("rronly", "1")
+                    // PSKReporter contact-identification policy (do not remove).
+                    addQueryParameter("appcontact", appContact)
                     q.cleanCallsign?.let { call ->
                         when (q.direction) {
                             Direction.TX, Direction.BOTH -> addQueryParameter("senderCallsign", call)
@@ -51,6 +63,9 @@ class PskReporterSource(
         "${q.cleanCallsign}|${q.direction}|${q.timeRangeMinutes}"
 
     companion object {
+        /** Contact address sent to PSKReporter per their operator policy. */
+        const val APP_CONTACT = "ham-radio-wspr-txrx@users.noreply.github.com"
+
         private val REPORT = Regex("<receptionReport\\b([^>]*?)/?>")
         private val ATTR = Regex("(\\w+)=\"([^\"]*)\"")
 

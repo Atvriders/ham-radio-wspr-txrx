@@ -8,6 +8,7 @@ import com.atvriders.wsprtxrx.data.prefs.AppSettings
 import com.atvriders.wsprtxrx.data.prefs.SettingsStore
 import com.atvriders.wsprtxrx.data.qrz.QrzService
 import com.atvriders.wsprtxrx.data.source.PskReporterSource
+import com.atvriders.wsprtxrx.data.source.RateLimiter
 import com.atvriders.wsprtxrx.data.source.RbnSource
 import com.atvriders.wsprtxrx.data.source.SpotSource
 import com.atvriders.wsprtxrx.data.source.WsprLiveSource
@@ -53,9 +54,16 @@ class AppContainer(context: Context) {
     }
 
     private val sources: List<SpotSource> by lazy {
+        // PSKReporter's ~5-min rate limit is made durable across cold starts by backing
+        // the limiter's last-fetch timestamp with DataStore (via settingsStore).
+        val pskRateLimiter = RateLimiter(
+            minIntervalMs = 5 * 60_000L,
+            loadStamp = { key -> settingsStore.rateLimitStamp(key) },
+            saveStamp = { key, t -> settingsStore.setRateLimitStamp(key, t) },
+        )
         listOf(
             WsprLiveSource(httpClient),
-            PskReporterSource(httpClient),
+            PskReporterSource(httpClient, rateLimiter = pskRateLimiter),
             RbnSource(),
         )
     }
