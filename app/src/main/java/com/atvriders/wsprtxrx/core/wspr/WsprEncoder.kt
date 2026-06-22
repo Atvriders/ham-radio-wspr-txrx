@@ -15,6 +15,7 @@ object WsprEncoder {
 
     /** Returns the 162 channel symbols (each 0..3) for the given message. */
     fun encode(callsign: String, grid4: String, dbm: Int): IntArray {
+        require(dbm in WsprMessage.VALID_POWERS) { "power not a valid WSPR dBm value: $dbm" }
         val data = WsprMessage.sourceBytes(callsign, grid4, dbm)
 
         // Convolutional encoder: feed each bit MSB-first, emit POLY1 parity then POLY2.

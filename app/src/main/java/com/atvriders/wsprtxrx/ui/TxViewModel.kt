@@ -29,7 +29,7 @@ data class TxUiState(
     val error: String? = null,
 ) {
     val validCallsign: Boolean get() = callsign.isNotBlank() && runCatching { WsprMessage.packCallsign(callsign) }.isSuccess
-    val validGrid: Boolean get() = grid.length >= 4 && runCatching { Maidenhead.gridToLatLon(grid) }.isSuccess
+    val validGrid: Boolean get() = grid.length >= 4 && Maidenhead.gridToLatLonOrNull(grid) != null
     val canTransmit: Boolean
         get() = validCallsign && validGrid && (phase == TxPhase.IDLE || phase == TxPhase.DONE)
 }

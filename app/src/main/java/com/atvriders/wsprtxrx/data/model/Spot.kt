@@ -52,9 +52,7 @@ data class Spot(
     private fun rxLatLon(): LatLon? = if (rxLat != null && rxLon != null) LatLon(rxLat, rxLon) else null
 
     private fun gridLatLon(grid: String?): LatLon? =
-        grid?.takeIf { it.length >= 4 }?.let {
-            runCatching { Maidenhead.gridToLatLon(it) }.getOrNull()
-        }
+        grid?.takeIf { it.length >= 4 }?.let { Maidenhead.gridToLatLonOrNull(it) }
 
     /** Stable key for de-duplicating the same report seen via multiple sources. */
     fun dedupKey(): String = "$txCall|$rxCall|$freqHz|${timeUtc / 120}"

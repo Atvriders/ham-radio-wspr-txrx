@@ -1,10 +1,27 @@
 package com.atvriders.wsprtxrx.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MaidenheadTest {
+
+    @Test fun invalidGridReturnsNull() {
+        // Field letters beyond R are out of range for a Maidenhead locator.
+        assertNull(Maidenhead.gridToLatLonOrNull("ZZ99"))
+        assertNull(Maidenhead.gridToLatLonOrNull("42AB")) // digits in field position
+        assertNull(Maidenhead.gridToLatLonOrNull("FNXY")) // letters in square position
+        assertNull(Maidenhead.gridToLatLonOrNull("FN"))   // too short
+        assertNull(Maidenhead.gridToLatLonOrNull("FN42YZ")) // subsquare beyond X
+    }
+
+    @Test fun validGridReturnsNonNull() {
+        assertNotNull(Maidenhead.gridToLatLonOrNull("FN42"))
+        assertNotNull(Maidenhead.gridToLatLonOrNull("FN42mm"))
+    }
+
     @Test fun fn42CenterIsBoston() {
         val p = Maidenhead.gridToLatLon("FN42")
         assertEquals(42.5, p.lat, 0.01)

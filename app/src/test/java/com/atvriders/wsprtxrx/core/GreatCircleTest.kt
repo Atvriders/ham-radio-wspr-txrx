@@ -26,4 +26,19 @@ class GreatCircleTest {
         val az = GreatCircle.azimuthDeg(newYork, london)
         assertTrue(az in 0.0..360.0)
     }
+
+    @Test fun nearAntipodalDistanceIsNotNaN() {
+        // Antipodal pairs push the haversine radicand slightly past 1.0 and would
+        // produce NaN without the clamp. Expect ~half Earth circumference (~20015 km).
+        val p = LatLon(0.0, 0.0)
+        val antipode = LatLon(0.0, 180.0)
+        val d = GreatCircle.distanceKm(p, antipode)
+        assertTrue("expected finite distance, got $d", d.isFinite())
+        assertEquals(20015.0, d, 50.0)
+
+        // Near-antipodal grid-center pair (real-data shape).
+        val a = LatLon(42.5, -71.0)
+        val b = LatLon(-42.5, 109.0)
+        assertTrue(GreatCircle.distanceKm(a, b).isFinite())
+    }
 }

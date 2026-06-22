@@ -15,8 +15,10 @@ object GreatCircle {
         val lat2 = Math.toRadians(b.lat)
         val dLat = Math.toRadians(b.lat - a.lat)
         val dLon = Math.toRadians(b.lon - a.lon)
-        val h = sin(dLat / 2).let { it * it } +
-            cos(lat1) * cos(lat2) * sin(dLon / 2).let { it * it }
+        // Clamp the radicand to [0,1]: floating-point error can push it slightly past
+        // 1.0 for (near-)antipodal pairs, which would make sqrt(1 - h) NaN.
+        val h = (sin(dLat / 2).let { it * it } +
+            cos(lat1) * cos(lat2) * sin(dLon / 2).let { it * it }).coerceIn(0.0, 1.0)
         return 2 * EARTH_RADIUS_KM * atan2(sqrt(h), sqrt(1 - h))
     }
 

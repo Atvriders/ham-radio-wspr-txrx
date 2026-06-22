@@ -8,10 +8,26 @@ import kotlin.math.floor
  */
 object Maidenhead {
 
-    /** Returns the latitude/longitude of the center of the given grid square. */
+    /**
+     * Returns the latitude/longitude of the center of the given grid square, or null
+     * if the locator is malformed (wrong length or out-of-range characters).
+     */
+    fun gridToLatLonOrNull(grid: String): LatLon? =
+        runCatching { gridToLatLon(grid) }.getOrNull()
+
+    /**
+     * Returns the latitude/longitude of the center of the given grid square.
+     * Validates each position: field [A-R][A-R], square [0-9][0-9], optional
+     * subsquare [A-X][A-X]. Throws [IllegalArgumentException] on malformed input.
+     */
     fun gridToLatLon(grid: String): LatLon {
         val g = grid.trim().uppercase()
         require(g.length >= 4) { "grid must be at least 4 characters: $grid" }
+        require(g[0] in 'A'..'R' && g[1] in 'A'..'R') { "grid field out of range (A-R): $grid" }
+        require(g[2] in '0'..'9' && g[3] in '0'..'9') { "grid square must be digits: $grid" }
+        if (g.length >= 6) {
+            require(g[4] in 'A'..'X' && g[5] in 'A'..'X') { "grid subsquare out of range (A-X): $grid" }
+        }
 
         var lon = (g[0] - 'A') * 20.0 - 180.0
         var lat = (g[1] - 'A') * 10.0 - 90.0

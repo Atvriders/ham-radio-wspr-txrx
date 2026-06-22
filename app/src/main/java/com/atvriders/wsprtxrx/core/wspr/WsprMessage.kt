@@ -60,6 +60,11 @@ object WsprMessage {
     fun packGridPower(grid4: String, dbm: Int): Int {
         val g = grid4.trim().uppercase()
         require(g.length >= 4) { "grid must be at least 4 characters: $grid4" }
+        // The field letters must be A..R: anything beyond R makes the packed value
+        // negative, so a corrupt locator can never be transmitted as a valid frame.
+        require(g[0] in 'A'..'R' && g[1] in 'A'..'R') { "grid field out of range (A-R): $grid4" }
+        require(g[2] in '0'..'9' && g[3] in '0'..'9') { "grid square must be digits: $grid4" }
+        require(dbm in VALID_POWERS) { "power not a valid WSPR dBm value: $dbm" }
         var m = (179 - 10 * locValue(g[0]) - locValue(g[2])) * 180 + 10 * locValue(g[1]) + locValue(g[3])
         m = m * 128 + dbm + 64
         return m
