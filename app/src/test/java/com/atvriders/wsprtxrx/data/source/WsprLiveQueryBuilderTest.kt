@@ -12,7 +12,25 @@ class WsprLiveQueryBuilderTest {
         val sql = WsprLiveQueryBuilder.buildSql(SpotQuery(timeRangeMinutes = 30))
         assertTrue(sql.contains("subtractMinutes(now(), 30)"))
         assertTrue(sql.endsWith("FORMAT JSONEachRow"))
-        assertTrue(sql.contains("FROM rx"))
+        // B1: the table must be fully qualified as wspr.rx (an unqualified `rx`
+        // fails because the wspr.live HTTP user has no default database).
+        assertTrue(sql.contains("FROM wspr.rx"))
+    }
+
+    @Test fun formatSuffixIsFinalTokenWithNoSemicolon() {
+        // H7: FORMAT JSONEachRow must be the trailing token and there must be no
+        // semicolon anywhere in the emitted SQL, for every query shape.
+        val queries = listOf(
+            SpotQuery(timeRangeMinutes = 60),
+            SpotQuery(bands = setOf(Band.M20, Band.M40)),
+            SpotQuery(callsign = "K1ABC", direction = Direction.BOTH),
+            SpotQuery(grid = "FN42", maxDistanceKm = 5000, maxPowerDbm = 23),
+        )
+        for (q in queries) {
+            val sql = WsprLiveQueryBuilder.buildSql(q)
+            assertTrue("expected trailing FORMAT JSONEachRow in: $sql", sql.endsWith("FORMAT JSONEachRow"))
+            assertFalse("expected no semicolon in: $sql", sql.contains(";"))
+        }
     }
 
     @Test fun includesBandCodes() {

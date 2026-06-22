@@ -48,7 +48,13 @@ object WsprLiveQueryBuilder {
 
         val cols = COLUMNS.joinToString(", ")
         val whereClause = where.joinToString(" AND ")
-        return "SELECT $cols FROM rx WHERE $whereClause " +
-            "ORDER BY time DESC LIMIT $MAX_ROWS FORMAT JSONEachRow"
+        // The wspr.live ClickHouse HTTP user has no default database, so the table
+        // must be fully qualified as `wspr.rx`.
+        val core = "SELECT $cols FROM wspr.rx WHERE $whereClause " +
+            "ORDER BY time DESC LIMIT $MAX_ROWS"
+        // Guarantee `FORMAT JSONEachRow` is the final token, with no trailing `;`.
+        return core.trimEnd().trimEnd(';').trimEnd() + " " + FORMAT_SUFFIX
     }
+
+    private const val FORMAT_SUFFIX = "FORMAT JSONEachRow"
 }

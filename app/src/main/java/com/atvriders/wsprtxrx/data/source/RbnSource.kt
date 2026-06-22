@@ -25,6 +25,7 @@ class RbnSource(
     private val host: String = "telnet.reversebeacon.net",
     private val port: Int = 7000,
     private val snapshotMs: Long = 6_000L,
+    private val promptTimeoutMs: Long = 3_000L,
     private val maxLines: Int = 400,
     private val socketFactory: () -> Socket = { Socket() },
 ) : SpotSource {
@@ -38,11 +39,24 @@ class RbnSource(
             try {
                 socket.connect(InetSocketAddress(host, port), 5_000)
                 socket.soTimeout = 2_000
+                val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+                // Wait for the cluster's "Please enter your call:" prompt before sending
+                // the login, otherwise early bytes can be discarded and the call dropped.
+                // Bounded by a short timeout so a non-prompting server still proceeds.
+                withTimeoutOrNull(promptTimeoutMs) {
+                    val buf = CharArray(256)
+                    val seen = StringBuilder()
+                    while (true) {
+                        val n = runCatching { reader.read(buf) }.getOrNull() ?: break
+                        if (n <= 0) break
+                        seen.append(buf, 0, n)
+                        if (seen.contains("call", ignoreCase = true)) break
+                    }
+                }
                 socket.getOutputStream().apply {
                     write("$loginCall\r\n".toByteArray())
                     flush()
                 }
-                val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
                 withTimeoutOrNull(snapshotMs) {
                     var count = 0
                     while (count < maxLines) {
