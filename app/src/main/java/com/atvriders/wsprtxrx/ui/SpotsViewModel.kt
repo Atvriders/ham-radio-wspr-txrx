@@ -10,6 +10,7 @@ import com.atvriders.wsprtxrx.data.prefs.AppSettings
 import com.atvriders.wsprtxrx.data.prefs.SettingsStore
 import com.atvriders.wsprtxrx.data.qrz.QrzInfo
 import com.atvriders.wsprtxrx.data.qrz.QrzService
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,6 +50,8 @@ class SpotsViewModel(
     private val _settings = MutableStateFlow(AppSettings())
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
+    private var searchJob: Job? = null
+
     init {
         viewModelScope.launch {
             settingsStore.settings.collect { _settings.value = it }
@@ -70,7 +73,10 @@ class SpotsViewModel(
     }
 
     fun search() {
-        viewModelScope.launch {
+        // Single-flight: cancel any in-flight search so overlapping calls can't race
+        // the RateLimiter cache or let a stale result win the StateFlow write.
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
             _ui.value = _ui.value.copy(loading = true, error = null)
             runCatching { repository.search(_query.value) }
                 .onSuccess { r ->

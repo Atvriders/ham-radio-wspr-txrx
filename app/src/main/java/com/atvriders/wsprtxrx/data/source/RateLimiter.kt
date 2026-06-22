@@ -1,9 +1,14 @@
 package com.atvriders.wsprtxrx.data.source
 
+import java.util.concurrent.ConcurrentHashMap
+
 /**
  * Caches the result of an expensive call per key and returns the cached value if the
  * same key is requested again within [minIntervalMs]. Used to respect PSKReporter's
  * "do not query more than once every few minutes" policy.
+ *
+ * The cache is a [ConcurrentHashMap] so overlapping searches from IO threads cannot
+ * corrupt it or throw [ConcurrentModificationException].
  */
 class RateLimiter(
     private val minIntervalMs: Long,
@@ -11,7 +16,7 @@ class RateLimiter(
 ) {
     private data class Entry(val time: Long, val value: Any?)
 
-    private val cache = HashMap<String, Entry>()
+    private val cache = ConcurrentHashMap<String, Entry>()
 
     /** Returns the cached value for [key] if fresh, otherwise runs [fetch] and caches it. */
     @Suppress("UNCHECKED_CAST")

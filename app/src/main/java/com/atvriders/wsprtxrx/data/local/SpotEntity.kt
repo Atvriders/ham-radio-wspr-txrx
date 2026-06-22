@@ -1,12 +1,13 @@
 package com.atvriders.wsprtxrx.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.atvriders.wsprtxrx.data.model.SourceId
 import com.atvriders.wsprtxrx.data.model.Spot
 
 /** Room row for a cached spot. Keyed by [Spot.dedupKey] so duplicates collapse. */
-@Entity(tableName = "spots")
+@Entity(tableName = "spots", indices = [Index("timeUtc")])
 data class SpotEntity(
     @PrimaryKey val key: String,
     val txCall: String,

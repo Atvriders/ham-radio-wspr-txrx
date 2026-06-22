@@ -30,6 +30,10 @@ class SpotRepository(
     private val dao: SpotDao,
     private val enabledProvider: suspend () -> Set<SourceId>,
 ) {
+    private companion object {
+        const val CACHE_RETENTION_SECONDS = 7L * 24 * 60 * 60 // 7 days
+    }
+
     suspend fun search(q: SpotQuery): RepoResult = coroutineScope {
         val enabled = enabledProvider()
         val active = sources.filter { it.id in enabled }
@@ -57,7 +61,14 @@ class SpotRepository(
 
         processed = processed.sortedByDescending { it.timeUtc }
 
-        runCatching { dao.upsertAll(processed.map { it.toEntity() }) }
+        runCatching {
+            dao.upsertAll(processed.map { it.toEntity() })
+            // Prune rows older than the retention window so the table can't grow
+            // unbounded over the install's lifetime (the time-bucketed primary key
+            // means REPLACE rarely collapses rows across time).
+            val cutoff = (System.currentTimeMillis() / 1000L) - CACHE_RETENTION_SECONDS
+            dao.deleteOlderThan(cutoff)
+        }
 
         RepoResult(processed, failures)
     }
