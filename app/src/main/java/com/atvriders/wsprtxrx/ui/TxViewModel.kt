@@ -34,10 +34,29 @@ data class TxUiState(
         get() = validCallsign && validGrid && (phase == TxPhase.IDLE || phase == TxPhase.DONE)
 }
 
+/**
+ * Hooks for keeping the transmit alive outside the composition (a foreground service).
+ * Defaults to a no-op so the ViewModel stays unit-testable without Android.
+ */
+interface TxKeepAlive {
+    /** Begin keeping the process/audio alive; return false if it couldn't be started. */
+    fun start(): Boolean
+    /** Stop keeping alive (idempotent). */
+    fun stop()
+
+    companion object {
+        val NONE: TxKeepAlive = object : TxKeepAlive {
+            override fun start(): Boolean = false
+            override fun stop() {}
+        }
+    }
+}
+
 /** Drives the WSPR transmit flow: validate, encode, optionally wait for the even UTC minute, play. */
 class TxViewModel(
     private val player: WsprPlayer = WsprPlayer(),
     private val now: () -> Long = System::currentTimeMillis,
+    private val keepAlive: TxKeepAlive = TxKeepAlive.NONE,
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(TxUiState())
@@ -78,9 +97,17 @@ class TxViewModel(
                 }
 
                 update { it.copy(phase = TxPhase.TRANSMITTING, secondsUntilStart = 0, progress = 0f) }
-                player.play(pcm) { p -> update { it.copy(progress = p) } }
+                // Keep the transmit alive across backgrounding/screen-off. If the service
+                // can't start, playback still proceeds in this coroutine (best-effort).
+                runCatching { keepAlive.start() }
+                try {
+                    player.play(pcm) { p -> update { it.copy(progress = p) } }
+                } finally {
+                    runCatching { keepAlive.stop() }
+                }
                 update { it.copy(phase = TxPhase.DONE, progress = 1f) }
             } catch (e: Exception) {
+                runCatching { keepAlive.stop() }
                 update { it.copy(phase = TxPhase.IDLE, error = e.message ?: "Transmit failed") }
             }
         }
@@ -88,11 +115,13 @@ class TxViewModel(
 
     fun stop() {
         txJob?.cancel()
+        runCatching { keepAlive.stop() }
         update { it.copy(phase = TxPhase.IDLE, progress = 0f, secondsUntilStart = 0) }
     }
 
     override fun onCleared() {
         txJob?.cancel()
+        runCatching { keepAlive.stop() }
         super.onCleared()
     }
 

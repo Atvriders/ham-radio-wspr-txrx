@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.atvriders.wsprtxrx.data.SpotRepository
 import com.atvriders.wsprtxrx.data.local.AppDatabase
 import com.atvriders.wsprtxrx.data.prefs.AppSettings
+import com.atvriders.wsprtxrx.data.prefs.KeystoreSecretCrypto
 import com.atvriders.wsprtxrx.data.prefs.SettingsStore
 import com.atvriders.wsprtxrx.data.qrz.QrzService
 import com.atvriders.wsprtxrx.data.source.PskReporterSource
@@ -45,7 +46,9 @@ class AppContainer(context: Context) {
             .build()
     }
 
-    val settingsStore: SettingsStore by lazy { SettingsStore(appContext) }
+    val settingsStore: SettingsStore by lazy {
+        SettingsStore(appContext, crypto = KeystoreSecretCrypto())
+    }
 
     val qrzService: QrzService by lazy {
         QrzService(httpClient, credentials = {
@@ -78,6 +81,8 @@ class AppContainer(context: Context) {
 
     init {
         scope.launch {
+            // Migrate any legacy plaintext QRZ password to the Keystore-encrypted form.
+            runCatching { settingsStore.migratePlaintextQrz() }
             settingsStore.settings.collect { settingsSnapshot = it }
         }
     }

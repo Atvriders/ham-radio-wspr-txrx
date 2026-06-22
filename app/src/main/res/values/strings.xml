@@ -8,4 +8,34 @@
     <string name="nav_settings">Settings</string>
 
     <string name="tx_disclaimer">Audio output only. This generates a WSPR tone for acoustic coupling / VOX into a transceiver. You are responsible for holding a valid licence and for all RF you transmit.</string>
+
+    <!-- Common actions -->
+    <string name="action_allow">Allow</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- TX screen -->
+    <string name="tx_title">Transmit WSPR</string>
+    <string name="tx_callsign_label">Callsign</string>
+    <string name="tx_grid_label">Grid (e.g. FN42)</string>
+    <string name="tx_gps">GPS</string>
+    <string name="tx_even_minute">Start on even UTC minute</string>
+    <string name="tx_power">Power: %1$s</string>
+    <string name="tx_waiting">Waiting for slot — starting in %1$d s…</string>
+    <string name="tx_transmitting">Transmitting…</string>
+    <string name="tx_complete">Transmission complete.</string>
+    <string name="tx_stop">Stop</string>
+    <string name="tx_transmit">Transmit</string>
+    <string name="tx_location_title">Use your location?</string>
+    <string name="tx_location_body">Location is used only to compute your Maidenhead grid on-device; it is never uploaded.</string>
+
+    <!-- TX licence gate -->
+    <string name="tx_licence_title">Amateur radio licence required</string>
+    <string name="tx_licence_body">Transmitting WSPR signals is amateur radio operation. Confirm that you hold a valid amateur radio licence and are authorised to transmit on the frequency you will use.</string>
+    <string name="tx_licence_agree">I hold a valid amateur radio licence and am authorised to transmit</string>
+    <string name="tx_licence_cancel">Cancel</string>
+
+    <!-- TX foreground service notification -->
+    <string name="tx_notification_channel">WSPR transmit</string>
+    <string name="tx_notification_title">Transmitting WSPR</string>
+    <string name="tx_notification_text">Keeping the transmission alive — do not close the app.</string>
 </resources>

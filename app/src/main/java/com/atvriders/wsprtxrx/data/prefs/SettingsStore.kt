@@ -32,9 +32,14 @@ data class AppSettings(
     val bandColorOverrides: Map<String, Long> = emptyMap(),
     /** Per-key epoch-millis of the last rate-limited fetch (e.g. PSKReporter). */
     val rateLimitStamps: Map<String, Long> = emptyMap(),
+    /** True once the user has acknowledged they hold a valid amateur licence to transmit. */
+    val licenceAcknowledged: Boolean = false,
 )
 
-class SettingsStore(private val context: Context) {
+class SettingsStore(
+    private val context: Context,
+    private val crypto: SecretCrypto = SecretCrypto.NONE,
+) {
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { it.toSettings() }
 
@@ -42,13 +47,23 @@ class SettingsStore(private val context: Context) {
         it[Keys.SOURCES] = sources.map(SourceId::name).toSet()
     }
 
-    // TODO(security): the QRZ password is persisted in cleartext in this DataStore.
-    // It is excluded from cloud backup and device transfer (res/xml backup rules), but
-    // it should later be Android Keystore-encrypted (or replaced with the short-lived
-    // QRZ session key) so it isn't stored at rest in plaintext on the device.
+    /**
+     * Persists the QRZ username and password. The password is encrypted at rest with an
+     * AndroidKeystore AES/GCM key (see [SecretCrypto]) and stored as ciphertext; the
+     * legacy plaintext key is cleared. If encryption fails for any reason we deliberately
+     * do NOT persist the password (it stays empty) rather than store plaintext or crash.
+     */
     suspend fun setQrz(username: String, password: String) = edit {
         it[Keys.QRZ_USER] = username
-        it[Keys.QRZ_PASS] = password
+        // Always clear any legacy plaintext value.
+        it.remove(Keys.QRZ_PASS)
+        val enc = if (password.isEmpty()) "" else crypto.encrypt(password)
+        if (enc != null) {
+            it[Keys.QRZ_PASS_ENC] = enc
+        } else {
+            // Encryption unavailable/failed: drop the password rather than leak it.
+            it.remove(Keys.QRZ_PASS_ENC)
+        }
     }
 
     suspend fun setDefaultTimeRange(minutes: Int) = edit { it[Keys.TIME_RANGE] = minutes }
@@ -56,6 +71,9 @@ class SettingsStore(private val context: Context) {
     suspend fun setUseMiles(useMiles: Boolean) = edit { it[Keys.USE_MILES] = useMiles }
 
     suspend fun setThemeMode(mode: ThemeMode) = edit { it[Keys.THEME] = mode.name }
+
+    /** Persists the one-time amateur-licence acknowledgement required before first TX. */
+    suspend fun setLicenceAcknowledged(ack: Boolean) = edit { it[Keys.LICENCE_ACK] = ack }
 
     suspend fun setRecentCalls(calls: List<String>) = edit {
         it[Keys.RECENT_CALLS] = json.encodeToString(ListSerializer(String.serializer()), calls)
@@ -91,6 +109,23 @@ class SettingsStore(private val context: Context) {
     /** Reads the persisted last-fetch epoch-millis for [key], or null if none. */
     suspend fun rateLimitStamp(key: String): Long? = settingsSnapshot().rateLimitStamps[key]
 
+    /**
+     * One-time migration of a legacy plaintext QRZ password into the encrypted key. Safe
+     * to call repeatedly; no-ops once the plaintext key is gone. Never throws.
+     */
+    suspend fun migratePlaintextQrz() {
+        runCatching {
+            val prefs = context.dataStore.data.first()
+            val legacy = prefs[Keys.QRZ_PASS] ?: return
+            // Re-encrypt under the Keystore key, then drop the plaintext.
+            val enc = if (legacy.isEmpty()) "" else crypto.encrypt(legacy)
+            edit {
+                it.remove(Keys.QRZ_PASS)
+                if (enc != null && enc.isNotEmpty()) it[Keys.QRZ_PASS_ENC] = enc
+            }
+        }
+    }
+
     private suspend fun settingsSnapshot(): AppSettings =
         context.dataStore.data.first().toSettings()
 
@@ -103,7 +138,11 @@ class SettingsStore(private val context: Context) {
             .mapNotNull { runCatching { SourceId.valueOf(it) }.getOrNull() }.toSet()
             .ifEmpty { setOf(SourceId.WSPR_LIVE) },
         qrzUsername = this[Keys.QRZ_USER] ?: "",
-        qrzPassword = this[Keys.QRZ_PASS] ?: "",
+        // Prefer the Keystore-encrypted value; decrypt fail-safe (null -> empty). Fall
+        // back to a legacy plaintext value only until migration replaces it.
+        qrzPassword = this[Keys.QRZ_PASS_ENC]?.let { crypto.decrypt(it) }
+            ?: this[Keys.QRZ_PASS]
+            ?: "",
         defaultTimeRangeMinutes = this[Keys.TIME_RANGE] ?: 30,
         useMiles = this[Keys.USE_MILES] ?: false,
         themeMode = runCatching { ThemeMode.valueOf(this[Keys.THEME] ?: "SYSTEM") }
@@ -121,18 +160,23 @@ class SettingsStore(private val context: Context) {
                 json.decodeFromString(MapSerializer(String.serializer(), Long.serializer()), it)
             }.getOrNull()
         } ?: emptyMap(),
+        licenceAcknowledged = this[Keys.LICENCE_ACK] ?: false,
     )
 
     private object Keys {
         val SOURCES = stringSetPreferencesKey("enabled_sources")
         val QRZ_USER = stringPreferencesKey("qrz_user")
+        /** Legacy plaintext key, kept only for read-time migration. */
         val QRZ_PASS = stringPreferencesKey("qrz_pass")
+        /** AndroidKeystore-encrypted password: base64(iv||ciphertext). */
+        val QRZ_PASS_ENC = stringPreferencesKey("qrz_pass_enc")
         val TIME_RANGE = intPreferencesKey("time_range")
         val USE_MILES = booleanPreferencesKey("use_miles")
         val THEME = stringPreferencesKey("theme")
         val RECENT_CALLS = stringPreferencesKey("recent_calls")
         val BAND_COLORS = stringPreferencesKey("band_colors")
         val RATE_LIMIT_STAMPS = stringPreferencesKey("rate_limit_stamps")
+        val LICENCE_ACK = booleanPreferencesKey("licence_acknowledged")
     }
 
     private companion object {

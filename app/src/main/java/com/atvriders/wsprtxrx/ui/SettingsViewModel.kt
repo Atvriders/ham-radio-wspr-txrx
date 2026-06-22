@@ -32,6 +32,9 @@ class SettingsViewModel(private val store: SettingsStore) : ViewModel() {
 
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { store.setThemeMode(mode) }
 
+    /** Records the one-time amateur-licence acknowledgement required before first TX. */
+    fun acknowledgeLicence() = viewModelScope.launch { store.setLicenceAcknowledged(true) }
+
     fun setBandColor(bandName: String, color: Long) = viewModelScope.launch {
         val overrides = settings.value.bandColorOverrides.toMutableMap()
         overrides[bandName] = color

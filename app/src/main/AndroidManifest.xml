@@ -6,6 +6,9 @@
     <!-- Coarse location is sufficient to compute a 4/6-char Maidenhead grid; FINE is
          not requested to de-risk Play review. Location is used on-device only. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Keeps the time-critical ~110.6 s WSPR transmit alive when backgrounded. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:name=".WsprApp"
@@ -28,6 +31,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".audio.TxForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 
 </manifest>

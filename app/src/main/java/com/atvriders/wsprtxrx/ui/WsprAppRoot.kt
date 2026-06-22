@@ -55,7 +55,11 @@ fun WsprAppRoot(container: AppContainer, windowSizeClass: WindowSizeClass) {
                     Destination.SPOTS -> SpotsScreen(spotsVm, windowSizeClass.widthSizeClass)
                     Destination.MAP -> MapScreen(spotsVm, settings)
                     Destination.CHARTS -> ChartsScreen(spotsVm)
-                    Destination.TX -> TxScreen(txVm)
+                    Destination.TX -> TxScreen(
+                        vm = txVm,
+                        licenceAcknowledged = settings.licenceAcknowledged,
+                        onAcknowledgeLicence = settingsVm::acknowledgeLicence,
+                    )
                     Destination.SETTINGS -> SettingsScreen(settingsVm)
                 }
             }

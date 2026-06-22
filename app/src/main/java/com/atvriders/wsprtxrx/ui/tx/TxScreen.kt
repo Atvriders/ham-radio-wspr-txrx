@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -27,6 +28,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,8 +36,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -46,9 +49,21 @@ import com.atvriders.wsprtxrx.ui.TxPhase
 import com.atvriders.wsprtxrx.ui.TxViewModel
 
 @Composable
-fun TxScreen(vm: TxViewModel) {
+fun TxScreen(
+    vm: TxViewModel,
+    licenceAcknowledged: Boolean,
+    onAcknowledgeLicence: () -> Unit,
+) {
     val ui by vm.ui.collectAsState()
     val context = LocalContext.current
+    val view = LocalView.current
+
+    // Keep the screen on during the time-critical wait/transmit so the slot isn't missed.
+    val active = ui.phase == TxPhase.WAITING || ui.phase == TxPhase.TRANSMITTING
+    DisposableEffect(active) {
+        if (active) view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
 
     val locationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -61,21 +76,40 @@ fun TxScreen(vm: TxViewModel) {
     if (showLocationRationale) {
         AlertDialog(
             onDismissRequest = { showLocationRationale = false },
-            title = { Text("Use your location?") },
-            text = {
-                Text(
-                    "Location is used only to compute your Maidenhead grid on-device; " +
-                        "it is never uploaded.",
-                )
-            },
+            title = { Text(stringResource(R.string.tx_location_title)) },
+            text = { Text(stringResource(R.string.tx_location_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     showLocationRationale = false
                     locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                }) { Text("Allow") }
+                }) { Text(stringResource(R.string.action_allow)) }
             },
             dismissButton = {
-                TextButton(onClick = { showLocationRationale = false }) { Text("Cancel") }
+                TextButton(onClick = { showLocationRationale = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    // One-time amateur-licence acknowledgement gate before the first-ever transmit.
+    var showLicenceGate by remember { mutableStateOf(false) }
+    if (showLicenceGate) {
+        AlertDialog(
+            onDismissRequest = { showLicenceGate = false },
+            title = { Text(stringResource(R.string.tx_licence_title)) },
+            text = { Text(stringResource(R.string.tx_licence_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLicenceGate = false
+                    onAcknowledgeLicence()
+                    vm.transmit()
+                }) { Text(stringResource(R.string.tx_licence_agree)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLicenceGate = false }) {
+                    Text(stringResource(R.string.tx_licence_cancel))
+                }
             },
         )
     }
@@ -84,19 +118,24 @@ fun TxScreen(vm: TxViewModel) {
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Transmit WSPR", fontWeight = FontWeight.Bold)
-        Surface(color = Color(0x22FFB300), modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.tx_title), fontWeight = FontWeight.Bold)
+        // High-contrast safety disclaimer (errorContainer roles meet WCAG in both schemes).
+        Surface(
+            color = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Text(
-                stringResourceCompat(context, R.string.tx_disclaimer),
+                stringResource(R.string.tx_disclaimer),
                 Modifier.padding(10.dp),
-                color = Color(0xFF8D6E00),
+                fontWeight = FontWeight.Medium,
             )
         }
 
         OutlinedTextField(
             value = ui.callsign,
             onValueChange = vm::setCallsign,
-            label = { Text("Callsign") },
+            label = { Text(stringResource(R.string.tx_callsign_label)) },
             isError = ui.callsign.isNotEmpty() && !ui.validCallsign,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -106,7 +145,7 @@ fun TxScreen(vm: TxViewModel) {
             OutlinedTextField(
                 value = ui.grid,
                 onValueChange = vm::setGrid,
-                label = { Text("Grid (e.g. FN42)") },
+                label = { Text(stringResource(R.string.tx_grid_label)) },
                 isError = ui.grid.isNotEmpty() && !ui.validGrid,
                 singleLine = true,
                 modifier = Modifier.weight(1f),
@@ -120,35 +159,43 @@ fun TxScreen(vm: TxViewModel) {
                     // Show the rationale first; the system request only fires on Allow.
                     showLocationRationale = true
                 }
-            }) { Text("GPS") }
+            }) { Text(stringResource(R.string.tx_gps)) }
         }
 
         PowerPicker(ui.powerDbm, vm::setPower)
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Start on even UTC minute")
+            Text(stringResource(R.string.tx_even_minute))
             Switch(checked = ui.waitForEvenMinute, onCheckedChange = vm::setWaitForEvenMinute)
         }
 
         when (ui.phase) {
-            TxPhase.WAITING -> Text("Waiting for slot — starting in ${ui.secondsUntilStart}s…")
+            TxPhase.WAITING -> Text(stringResource(R.string.tx_waiting, ui.secondsUntilStart))
             TxPhase.TRANSMITTING -> {
-                Text("Transmitting…")
+                Text(stringResource(R.string.tx_transmitting))
                 LinearProgressIndicator(progress = { ui.progress }, modifier = Modifier.fillMaxWidth())
             }
-            TxPhase.DONE -> Text("Transmission complete.", color = Color(0xFF2E7D32))
+            TxPhase.DONE -> Text(
+                stringResource(R.string.tx_complete),
+                color = MaterialTheme.colorScheme.primary,
+            )
             TxPhase.IDLE -> {}
         }
-        ui.error?.let { Text(it, color = Color(0xFFC62828)) }
+        ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         if (ui.phase == TxPhase.WAITING || ui.phase == TxPhase.TRANSMITTING) {
-            Button(onClick = vm::stop, modifier = Modifier.fillMaxWidth()) { Text("Stop") }
+            Button(onClick = vm::stop, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.tx_stop))
+            }
         } else {
             Button(
-                onClick = vm::transmit,
+                onClick = {
+                    // Gate the first-ever transmit behind the licence acknowledgement.
+                    if (licenceAcknowledged) vm.transmit() else showLicenceGate = true
+                },
                 enabled = ui.canTransmit,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Transmit") }
+            ) { Text(stringResource(R.string.tx_transmit)) }
         }
     }
 }
@@ -158,7 +205,7 @@ private fun PowerPicker(power: Int, onSelect: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         OutlinedButton(onClick = { expanded = true }) {
-            Text("Power: ${Format.powerLabel(power)}")
+            Text(stringResource(R.string.tx_power, Format.powerLabel(power)))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             WsprMessage.VALID_POWERS.forEach { p ->
@@ -170,8 +217,6 @@ private fun PowerPicker(power: Int, onSelect: (Int) -> Unit) {
         }
     }
 }
-
-private fun stringResourceCompat(context: Context, id: Int): String = context.getString(id)
 
 @SuppressLint("MissingPermission")
 private fun lastLocation(context: Context): Pair<Double, Double>? {
