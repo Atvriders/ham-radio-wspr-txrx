@@ -50,6 +50,7 @@ import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
+import org.maplibre.geojson.MultiLineString
 import org.maplibre.geojson.Point
 import com.atvriders.wsprtxrx.core.SolarTerminator
 import kotlinx.coroutines.Dispatchers
@@ -342,9 +343,14 @@ private fun buildLines(spots: List<Spot>, bandColors: Map<String, Long>): Featur
 
 private fun buildTerminator(): FeatureCollection {
     val now = Instant.now().epochSecond
-    val pts = SolarTerminator.terminatorPolygon(now, steps = 180)
-        .map { Point.fromLngLat(it.lon, it.lat) }
-    return FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(LineString.fromLngLats(pts))))
+    // Split at ±180° crossings so the grey line never streaks across the whole map; a
+    // MultiLineString keeps the grey line continuous while breaking only at the wrap.
+    val segments = SolarTerminator.terminatorSegments(now, steps = 180).map { seg ->
+        seg.map { Point.fromLngLat(it.lon, it.lat) }
+    }.filter { it.size >= 2 }
+    if (segments.isEmpty()) return FeatureCollection.fromFeatures(emptyList<Feature>())
+    val geometry = MultiLineString.fromLngLats(segments)
+    return FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(geometry)))
 }
 
 private fun hexColor(argb: Long): String {

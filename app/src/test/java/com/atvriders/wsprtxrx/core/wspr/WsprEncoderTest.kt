@@ -29,6 +29,26 @@ class WsprEncoderTest {
         assertEquals("KO7M  ", WsprMessage.normalize("KO7M"))
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun normalizeRejectsEmptyCallsign() {
+        WsprMessage.normalize("   ")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun normalizeRejectsInteriorSpace() {
+        WsprMessage.normalize("K1 BC")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun normalizeRejectsIllegalCharacter() {
+        WsprMessage.normalize("K1#BC")
+    }
+
+    @Test fun emptyCallsignMessageMentionsEmpty() {
+        val ex = runCatching { WsprMessage.normalize("") }.exceptionOrNull()
+        assertTrue(ex is IllegalArgumentException && ex.message!!.contains("empty"))
+    }
+
     @Test fun packsCallsign() {
         assertEquals(0xF70C238, WsprMessage.packCallsign("K1ABC"))
     }

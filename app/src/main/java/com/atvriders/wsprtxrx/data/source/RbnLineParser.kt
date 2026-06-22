@@ -77,14 +77,20 @@ object RbnLineParser {
         )
     }
 
-    /** Picks the mode token (the word right after the DX call), defaulting to "CW". */
+    /**
+     * Picks the mode token (the word right after the DX call), defaulting to "CW".
+     * A mode token starts with a letter and may contain digits (CW, FT8, FT4, PSK31,
+     * RTTY). A purely numeric token is the SNR field, not a mode.
+     */
     private fun modeAfter(afterFreq: String, dxCall: String): String {
         val idx = afterFreq.indexOf(dxCall, ignoreCase = true)
         if (idx < 0) return "CW"
         val rest = afterFreq.substring(idx + dxCall.length).trim()
         val token = rest.split(Regex("\\s+")).firstOrNull()?.uppercase() ?: return "CW"
-        // The next token is the mode unless it's a numeric (SNR) or a dB/WPM marker.
-        return if (token.isNotEmpty() && token.all { it.isLetter() }) token else "CW"
+        val looksLikeMode = token.isNotEmpty() &&
+            token[0].isLetter() &&
+            token.all { it.isLetterOrDigit() }
+        return if (looksLikeMode) token else "CW"
     }
 
     private fun isValidHhmm(hhmm: String): Boolean {

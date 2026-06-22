@@ -29,11 +29,27 @@ object WsprMessage {
     }
 
     /**
+     * Canonical WSPR type-1 callsign: 1-6 letters/digits, with an optional single `/`
+     * separator (e.g. a compound prefix/suffix). No interior spaces. The packed form only
+     * supports characters A-Z, 0-9 and the implicit space pad, so the guard rejects
+     * anything else early with a clear message rather than producing a corrupt frame.
+     */
+    private val CALLSIGN_RE = Regex("^[A-Z0-9]{1,6}(?:/[A-Z0-9]{1,6})?$")
+
+    /**
      * Right-justifies the callsign so its third character is a digit and pads to 6
      * characters with trailing spaces.
+     *
+     * Rejects empty callsigns and any callsign with interior spaces or illegal
+     * characters (e.g. "K1 BC") with an explicit message.
      */
     fun normalize(callsign: String): String {
         val c = callsign.trim().uppercase()
+        require(c.isNotEmpty()) { "callsign must not be empty" }
+        require(' ' !in c) { "callsign must not contain interior spaces: '$callsign'" }
+        require(CALLSIGN_RE.matches(c)) {
+            "not a valid WSPR callsign (letters/digits, optional one '/'): '$callsign'"
+        }
         require(c.length <= 6) { "callsign longer than 6 characters: $callsign" }
         val padded = (c + "      ").substring(0, 6)
         return when {
