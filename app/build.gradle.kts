@@ -79,6 +79,12 @@ android {
     }
 }
 
+// Room schema export location (exportSchema = true on AppDatabase). The generated v2
+// schema JSON lands under app/schemas; committing it can follow in a later change.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

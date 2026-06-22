@@ -38,11 +38,14 @@ fun WsprAppRoot(container: AppContainer, windowSizeClass: WindowSizeClass) {
 
     var current by rememberSaveable { mutableStateOf(Destination.SPOTS) }
 
+    // Resolve labels in composable scope (the navigation-items builder is not @Composable).
+    val labels = Destination.entries.associateWith { stringResource(it.labelRes) }
+
     WsprTheme(themeMode = settings.themeMode) {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
                 Destination.entries.forEach { dest ->
-                    val label = stringResource(dest.labelRes)
+                    val label = labels.getValue(dest)
                     item(
                         selected = current == dest,
                         onClick = { current = dest },
