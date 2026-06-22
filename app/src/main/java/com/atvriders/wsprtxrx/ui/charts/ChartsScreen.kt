@@ -58,6 +58,7 @@ fun ChartsScreen(vm: SpotsViewModel) {
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        com.atvriders.wsprtxrx.ui.ErrorBanner(ui.error, onRetry = { vm.search() })
         Text("Spots over time", fontWeight = FontWeight.Bold)
         SpotCountChart(
             buckets = buckets,

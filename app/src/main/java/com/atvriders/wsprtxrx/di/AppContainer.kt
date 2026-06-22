@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
  * credentials, enabled sources) can read the latest values.
  */
 class AppContainer(context: Context) {
-    private val appContext = context.applicationContext
+    val appContext: Context = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Volatile

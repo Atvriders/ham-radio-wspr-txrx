@@ -54,6 +54,7 @@ fun SpotsScreen(vm: SpotsViewModel, widthSizeClass: WindowWidthSizeClass) {
             onSearch = { vm.search() },
         )
         if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        com.atvriders.wsprtxrx.ui.ErrorBanner(ui.error, onRetry = { vm.search() })
         FailuresBanner(ui.failures.map { it.source.label })
         SortRow(ui.sort, vm::setSort)
         HorizontalDivider()

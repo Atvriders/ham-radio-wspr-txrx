@@ -85,6 +85,7 @@ fun MapScreen(vm: SpotsViewModel, settings: AppSettings) {
             onQueryChange = { newQuery -> vm.updateQuery { newQuery } },
             onSearch = { vm.search() },
         )
+        com.atvriders.wsprtxrx.ui.ErrorBanner(ui.error, onRetry = { vm.search() })
         Box(Modifier.fillMaxSize()) {
             SpotMap(
                 spots = ui.spots,
@@ -118,12 +119,25 @@ private fun SpotMap(
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
+        // The Map tab is usually entered while the Activity is already RESUMED, so a
+        // plain observer (future events only) never delivers ON_START/ON_RESUME and the
+        // GL surface never starts (blank map). Fast-forward to the current state on
+        // attach. We track how far we drove the MapView so teardown is symmetric and
+        // onDestroy is never called twice.
+        var started = false
+        var resumed = false
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            mapView.onStart(); started = true
+        }
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            mapView.onResume(); resumed = true
+        }
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> mapView.onStart()
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                Lifecycle.Event.ON_START -> { mapView.onStart(); started = true }
+                Lifecycle.Event.ON_RESUME -> { mapView.onResume(); resumed = true }
+                Lifecycle.Event.ON_PAUSE -> { mapView.onPause(); resumed = false }
+                Lifecycle.Event.ON_STOP -> { mapView.onStop(); started = false }
                 Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
                 else -> {}
             }
@@ -131,7 +145,8 @@ private fun SpotMap(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onStop()
+            if (resumed) mapView.onPause()
+            if (started) mapView.onStop()
             mapView.onDestroy()
         }
     }
