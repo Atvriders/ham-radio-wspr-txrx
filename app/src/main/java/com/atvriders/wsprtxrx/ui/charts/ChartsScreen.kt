@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,10 +32,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.atvriders.wsprtxrx.core.Band
 import com.atvriders.wsprtxrx.ui.Format
 import com.atvriders.wsprtxrx.ui.SpotsViewModel
 import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun ChartsScreen(vm: SpotsViewModel) {
@@ -44,8 +48,9 @@ fun ChartsScreen(vm: SpotsViewModel) {
     val nowSec = remember(ui.spots) { Instant.now().epochSecond }
     val windowSec = query.timeRangeMinutes * 60L
 
+    val bucketCount = 24
     val buckets = remember(ui.spots, windowSec) {
-        ChartData.timeBuckets(ui.spots, nowSec, windowSec, buckets = 24)
+        ChartData.timeBuckets(ui.spots, nowSec, windowSec, buckets = bucketCount)
     }
     val snr = remember(ui.spots) { ChartData.snrSeries(ui.spots) }
 
@@ -54,7 +59,14 @@ fun ChartsScreen(vm: SpotsViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("Spots over time", fontWeight = FontWeight.Bold)
-        SpotCountChart(buckets, settings.bandColorOverrides)
+        SpotCountChart(
+            buckets = buckets,
+            bandColors = settings.bandColorOverrides,
+            startSec = nowSec - windowSec,
+            nowSec = nowSec,
+            windowMinutes = query.timeRangeMinutes,
+            bucketCount = bucketCount,
+        )
 
         HorizontalDivider()
         Text("SNR over time", fontWeight = FontWeight.Bold)
@@ -65,27 +77,88 @@ fun ChartsScreen(vm: SpotsViewModel) {
     }
 }
 
+private val AXIS_TIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm'Z'")
+
+private fun formatWindow(minutes: Int): String = when {
+    minutes % (24 * 60) == 0 -> "${minutes / (24 * 60)}d"
+    minutes % 60 == 0 -> "${minutes / 60}h"
+    else -> "${minutes}m"
+}
+
+private fun axisTime(epochSec: Long): String =
+    Instant.ofEpochSecond(epochSec).atZone(ZoneOffset.UTC).format(AXIS_TIME_FMT)
+
 @Composable
-private fun SpotCountChart(buckets: List<TimeBucket>, bandColors: Map<String, Long>) {
-    if (buckets.all { it.total == 0 }) {
-        Text("No data", color = Color.Gray); return
+private fun SpotCountChart(
+    buckets: List<TimeBucket>,
+    bandColors: Map<String, Long>,
+    startSec: Long,
+    nowSec: Long,
+    windowMinutes: Int,
+    bucketCount: Int,
+) {
+    val windowLabel = formatWindow(windowMinutes)
+    val bucketLabel = formatWindow((windowMinutes / bucketCount.coerceAtLeast(1)).coerceAtLeast(1))
+    if (buckets.isEmpty() || buckets.all { it.total == 0 }) {
+        Text("No spots in range", color = Color.Gray)
+        Text(
+            "Spots per $bucketLabel over last $windowLabel",
+            color = Color.Gray,
+            fontSize = 11.sp,
+        )
+        return
     }
     val maxTotal = (buckets.maxOfOrNull { it.total } ?: 1).coerceAtLeast(1)
-    Canvas(Modifier.fillMaxWidth().height(160.dp)) {
-        val barW = size.width / buckets.size
-        buckets.forEachIndexed { i, bucket ->
-            var yTop = size.height
-            bucket.countsByBand.forEach { (band, count) ->
-                val h = (count.toFloat() / maxTotal) * size.height
-                yTop -= h
-                drawRect(
-                    color = Format.bandColor(band, bandColors),
-                    topLeft = Offset(i * barW + barW * 0.1f, yTop),
-                    size = Size(barW * 0.8f, h),
+    val gridColor = Color.LightGray.copy(alpha = 0.5f)
+
+    Row(Modifier.fillMaxWidth().height(160.dp)) {
+        // Y-axis: max at top, 0 at bottom.
+        Column(
+            Modifier.fillMaxHeight().padding(end = 4.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = androidx.compose.ui.Alignment.End,
+        ) {
+            Text("$maxTotal", color = Color.Gray, fontSize = 11.sp)
+            Text("0", color = Color.Gray, fontSize = 11.sp)
+        }
+        Canvas(Modifier.weight(1f).fillMaxHeight()) {
+            // Horizontal gridlines at 0/50/100% (and the baseline).
+            for (frac in listOf(0f, 0.5f, 1f)) {
+                val y = frac * size.height
+                drawLine(
+                    color = gridColor,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1f,
                 )
+            }
+            val barW = size.width / buckets.size
+            buckets.forEachIndexed { i, bucket ->
+                var yTop = size.height
+                bucket.countsByBand.forEach { (band, count) ->
+                    if (count <= 0) return@forEach
+                    // Proportional height, but at least 2px so non-zero buckets stay visible.
+                    val h = ((count.toFloat() / maxTotal) * size.height).coerceAtLeast(2f)
+                    yTop -= h
+                    drawRect(
+                        color = Format.bandColor(band, bandColors),
+                        topLeft = Offset(i * barW + barW * 0.1f, yTop),
+                        size = Size(barW * 0.8f, h),
+                    )
+                }
             }
         }
     }
+    // X-axis: start time (left) to "now" (right).
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(axisTime(startSec), color = Color.Gray, fontSize = 11.sp)
+        Text("now (${axisTime(nowSec)})", color = Color.Gray, fontSize = 11.sp)
+    }
+    Text(
+        "Spots per $bucketLabel over last $windowLabel (UTC)",
+        color = Color.Gray,
+        fontSize = 11.sp,
+    )
     BandLegend(buckets.flatMap { it.countsByBand.keys }.distinct(), bandColors)
 }
 
@@ -97,23 +170,44 @@ private fun SnrChart(points: List<SnrPoint>, bandColors: Map<String, Long>) {
     val minSnr = points.minOf { it.snr }.toFloat()
     val maxSnr = points.maxOf { it.snr }.toFloat()
     val range = (maxSnr - minSnr).coerceAtLeast(1f)
-    val tMin = points.first().timeSec.toFloat()
-    val tMax = points.last().timeSec.toFloat()
-    val tRange = (tMax - tMin).coerceAtLeast(1f)
-    Canvas(Modifier.fillMaxWidth().height(160.dp)) {
-        points.forEach { p ->
-            val x = ((p.timeSec - tMin) / tRange) * size.width
-            val y = size.height - ((p.snr - minSnr) / range) * size.height
-            drawCircle(
-                color = Format.bandColor(p.band, bandColors),
-                radius = 3f,
-                center = Offset(x, y),
-            )
+    val tMin = points.first().timeSec
+    val tMax = points.last().timeSec
+    val tRange = (tMax - tMin).toFloat().coerceAtLeast(1f)
+    val gridColor = Color.LightGray.copy(alpha = 0.5f)
+
+    Row(Modifier.fillMaxWidth().height(160.dp)) {
+        Column(
+            Modifier.fillMaxHeight().padding(end = 4.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = androidx.compose.ui.Alignment.End,
+        ) {
+            Text("${maxSnr.toInt()} dB", color = Color.Gray, fontSize = 11.sp)
+            Text("${minSnr.toInt()} dB", color = Color.Gray, fontSize = 11.sp)
+        }
+        Canvas(Modifier.weight(1f).fillMaxHeight()) {
+            for (frac in listOf(0f, 0.5f, 1f)) {
+                val y = frac * size.height
+                drawLine(
+                    color = gridColor,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1f,
+                )
+            }
+            points.forEach { p ->
+                val x = ((p.timeSec - tMin).toFloat() / tRange) * size.width
+                val y = size.height - ((p.snr - minSnr) / range) * size.height
+                drawCircle(
+                    color = Format.bandColor(p.band, bandColors),
+                    radius = 3f,
+                    center = Offset(x, y),
+                )
+            }
         }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("${minSnr.toInt()} dB", color = Color.Gray)
-        Text("${maxSnr.toInt()} dB", color = Color.Gray)
+        Text(axisTime(tMin), color = Color.Gray, fontSize = 11.sp)
+        Text(axisTime(tMax), color = Color.Gray, fontSize = 11.sp)
     }
 }
 
