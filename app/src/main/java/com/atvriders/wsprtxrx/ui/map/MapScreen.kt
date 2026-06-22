@@ -8,11 +8,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,16 +27,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.atvriders.wsprtxrx.R
 import com.atvriders.wsprtxrx.data.model.Spot
 import com.atvriders.wsprtxrx.data.prefs.AppSettings
 import com.atvriders.wsprtxrx.ui.QueryControls
@@ -64,15 +77,25 @@ private const val SRC_POINTS = "spot-points"
 private const val SRC_LINES = "spot-lines"
 private const val SRC_TERM = "terminator"
 
-/** A station picked by tapping its marker, surfaced in the info popup. */
+/** A station picked by tapping its marker, surfaced in the info popup. Saveable across
+ *  rotation/tab-switch via [rememberSaveable] (all fields are primitives/nullable). */
 data class SelectedStation(
     val call: String,
-    val role: String,
+    /** Stable role key: "both" / "tx" / "rx" (localized at display time). */
+    val roleKey: String,
     val spots: Int,
     val lat: Double,
     val lon: Double,
     val grid: String?,
 )
+
+/**
+ * Process-wide cache of the resolved globe style JSON so it isn't refetched on every Map
+ * entry. Null while not yet fetched; a present [StyleSpec] (whose `json` may itself be
+ * null on fetch failure) means the decision has been made.
+ */
+@Volatile
+private var cachedStyleSpec: StyleSpec? = null
 
 @Composable
 fun MapScreen(vm: SpotsViewModel, settings: AppSettings) {
@@ -111,12 +134,23 @@ private fun SpotMap(
     var pointSource by remember { mutableStateOf<GeoJsonSource?>(null) }
     var lineSource by remember { mutableStateOf<GeoJsonSource?>(null) }
     var termSource by remember { mutableStateOf<GeoJsonSource?>(null) }
-    var selectedStation by remember { mutableStateOf<SelectedStation?>(null) }
+    // Persist the selected station across rotation / tab-switch.
+    var selectedStation by rememberSaveable { mutableStateOf<SelectedStation?>(null) }
+    // Persist the camera (lat, lon, zoom) across rotation / tab-switch.
+    var camLat by rememberSaveable { mutableStateOf(20.0) }
+    var camLon by rememberSaveable { mutableStateOf(0.0) }
+    var camZoom by rememberSaveable { mutableStateOf(1.0) }
 
-    // Fetch the style and inject a globe projection; null means fall back to the
-    // plain (mercator) style URL, so the map always works even if this fails.
-    var styleSpec by remember { mutableStateOf<StyleSpec?>(null) }
-    LaunchedEffect(Unit) { styleSpec = StyleSpec(globeStyleJson()) }
+    // Fetch the style once and cache it process-wide (null json means fall back to the
+    // plain mercator style URL). styleSpec stays null until the cache is populated so we
+    // can show a spinner instead of refetching on every Map entry.
+    var styleSpec by remember { mutableStateOf(cachedStyleSpec) }
+    LaunchedEffect(Unit) {
+        if (cachedStyleSpec == null) {
+            cachedStyleSpec = StyleSpec(globeStyleJson())
+        }
+        styleSpec = cachedStyleSpec
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -156,8 +190,16 @@ private fun SpotMap(
         AndroidView(factory = { mapView }) { mv ->
             val spec = styleSpec ?: return@AndroidView // wait until the style decision is made
             mv.getMapAsync { map ->
+                // Persist camera moves so they survive rotation / tab-switch.
+                map.addOnCameraIdleListener {
+                    val pos = map.cameraPosition
+                    camLat = pos.target?.latitude ?: camLat
+                    camLon = pos.target?.longitude ?: camLon
+                    camZoom = pos.zoom
+                }
                 if (map.style == null) {
-                    map.cameraPosition = CameraPosition.Builder().target(LatLng(20.0, 0.0)).zoom(1.0).build()
+                    map.cameraPosition = CameraPosition.Builder()
+                        .target(LatLng(camLat, camLon)).zoom(camZoom).build()
                     val builder = spec.json?.let { Style.Builder().fromJson(it) }
                         ?: Style.Builder().fromUri(STYLE_URL)
                     map.setStyle(builder) { style ->
@@ -202,7 +244,7 @@ private fun SpotMap(
                                 val call = f.getStringProperty("call") ?: return@addOnMapClickListener false
                                 selectedStation = SelectedStation(
                                     call = call,
-                                    role = f.getStringProperty("role") ?: "Station",
+                                    roleKey = f.getStringProperty("role") ?: "rx",
                                     spots = f.getNumberProperty("spots")?.toInt() ?: 0,
                                     lat = f.getNumberProperty("lat")?.toDouble() ?: latLng.latitude,
                                     lon = f.getNumberProperty("lon")?.toDouble() ?: latLng.longitude,
@@ -218,6 +260,23 @@ private fun SpotMap(
                 }
             }
         }
+
+        // Spinner while the globe style JSON is being fetched for the first time.
+        if (styleSpec == null) {
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Text(
+                        stringResource(R.string.map_loading),
+                        Modifier.padding(top = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // Always-visible role legend (color + glyph) so TX/RX/both is readable.
+        MapLegend(Modifier.align(Alignment.TopEnd).padding(8.dp))
 
         selectedStation?.let { station ->
             StationInfoCard(
@@ -263,20 +322,66 @@ private fun StationInfoCard(
                     fontFamily = FontFamily.Monospace,
                 )
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close")
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.map_close))
                 }
             }
-            Text("${station.role} · ${station.spots} spot${if (station.spots == 1) "" else "s"}")
+            val roleText = "${roleGlyph(station.roleKey)} ${localizedRole(station.roleKey)}"
+            val spotsText = if (station.spots == 1) {
+                stringResource(R.string.map_role_spot_one, roleText, station.spots)
+            } else {
+                stringResource(R.string.map_role_spots, roleText, station.spots)
+            }
+            Text(spotsText, modifier = Modifier.semantics { contentDescription = spotsText })
             val coords = String.format("%.2f, %.2f", station.lat, station.lon)
             Text(
                 station.grid?.let { "$it · $coords" } ?: coords,
                 fontFamily = FontFamily.Monospace,
             )
             TextButton(onClick = onFilter) {
-                Text("Filter spots for ${station.call}")
+                Text(stringResource(R.string.map_filter_for, station.call))
             }
         }
     }
+}
+
+/** Always-visible legend mapping marker color + glyph to TX / RX / Both roles. */
+@Composable
+private fun MapLegend(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.small,
+        tonalElevation = 2.dp,
+    ) {
+        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            LegendRow(Color(0xFFC62828), "▲", stringResource(R.string.map_legend_tx))
+            LegendRow(Color(0xFF2E7D32), "●", stringResource(R.string.map_legend_rx))
+            LegendRow(Color(0xFF6A1B9A), "◆", stringResource(R.string.map_legend_both))
+        }
+    }
+}
+
+@Composable
+private fun LegendRow(color: Color, glyph: String, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.size(10.dp).clip(CircleShape).background(color))
+        Text("$glyph $label", style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun localizedRole(roleKey: String): String = when (roleKey) {
+    "both" -> stringResource(R.string.map_role_both)
+    "tx" -> stringResource(R.string.map_role_tx)
+    else -> stringResource(R.string.map_role_rx)
+}
+
+/** Non-color shape cue for a station role, matching the legend glyphs. */
+private fun roleGlyph(roleKey: String): String = when (roleKey) {
+    "both" -> "◆"
+    "tx" -> "▲"
+    else -> "●"
 }
 
 private fun roleColor(isTx: Boolean, isRx: Boolean): String = when {
@@ -285,10 +390,11 @@ private fun roleColor(isTx: Boolean, isRx: Boolean): String = when {
     else -> "#2E7D32"         // green — receiver
 }
 
+/** Stable role key stored as a GeoJSON property and localized at display time. */
 private fun roleLabel(isTx: Boolean, isRx: Boolean): String = when {
-    isTx && isRx -> "Both (TX & RX)"
-    isTx -> "Transmitter"
-    else -> "Receiver"
+    isTx && isRx -> "both"
+    isTx -> "tx"
+    else -> "rx"
 }
 
 private fun buildPoints(spots: List<Spot>): FeatureCollection {

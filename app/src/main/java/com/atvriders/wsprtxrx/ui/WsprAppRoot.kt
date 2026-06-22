@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.atvriders.wsprtxrx.di.AppContainer
 import com.atvriders.wsprtxrx.ui.charts.ChartsScreen
@@ -41,11 +42,12 @@ fun WsprAppRoot(container: AppContainer, windowSizeClass: WindowSizeClass) {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
                 Destination.entries.forEach { dest ->
+                    val label = stringResource(dest.labelRes)
                     item(
                         selected = current == dest,
                         onClick = { current = dest },
-                        icon = { Icon(dest.icon, contentDescription = dest.label) },
-                        label = { Text(dest.label) },
+                        icon = { Icon(dest.icon, contentDescription = label) },
+                        label = { Text(label) },
                     )
                 }
             },

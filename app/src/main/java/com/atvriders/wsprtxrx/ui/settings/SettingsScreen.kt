@@ -19,11 +19,13 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,14 +36,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.atvriders.wsprtxrx.R
 import com.atvriders.wsprtxrx.core.Band
 import com.atvriders.wsprtxrx.data.model.SourceId
 import com.atvriders.wsprtxrx.ui.Format
 import com.atvriders.wsprtxrx.ui.SettingsViewModel
 import com.atvriders.wsprtxrx.ui.theme.ThemeMode
+import com.atvriders.wsprtxrx.ui.labelRes
+import com.atvriders.wsprtxrx.ui.timeRangeLabel
 
 private val PALETTE = listOf(
     0xFFD32F2F, 0xFFF57C00, 0xFFFBC02D, 0xFF7CB342, 0xFF26A69A,
@@ -59,61 +67,61 @@ fun SettingsScreen(vm: SettingsViewModel) {
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Section("Data sources")
+        Section(stringResource(R.string.settings_data_sources))
         SourceId.entries.forEach { src ->
             SwitchRow(src.label, src in settings.enabledSources) { vm.toggleSource(src, it) }
         }
 
         HorizontalDivider()
-        Section("QRZ.com login")
-        Text("Optional. Paid accounts get the most detail in spot lookups.", color = Color.Gray)
-        OutlinedTextField(qrzUser, { qrzUser = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Section(stringResource(R.string.settings_qrz_login))
+        Text(stringResource(R.string.settings_qrz_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(qrzUser, { qrzUser = it }, label = { Text(stringResource(R.string.settings_username)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(
-            qrzPass, { qrzPass = it }, label = { Text("Password") }, singleLine = true,
+            qrzPass, { qrzPass = it }, label = { Text(stringResource(R.string.settings_password)) }, singleLine = true,
             visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(),
         )
-        Button(onClick = { vm.setQrz(qrzUser, qrzPass) }) { Text("Save QRZ login") }
+        Button(onClick = { vm.setQrz(qrzUser, qrzPass) }) { Text(stringResource(R.string.settings_save_qrz)) }
 
         HorizontalDivider()
-        Section("Default time range")
+        Section(stringResource(R.string.settings_default_time_range))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(15, 30, 60, 120).forEach { m ->
                 FilterChip(
                     selected = settings.defaultTimeRangeMinutes == m,
                     onClick = { vm.setTimeRange(m) },
-                    label = { Text(if (m < 60) "${m}m" else "${m / 60}h") },
+                    label = { Text(timeRangeLabel(m)) },
                 )
             }
         }
 
         HorizontalDivider()
-        Section("Appearance")
-        SwitchRow("Use miles", settings.useMiles) { vm.setUseMiles(it) }
+        Section(stringResource(R.string.settings_appearance))
+        SwitchRow(stringResource(R.string.settings_use_miles), settings.useMiles) { vm.setUseMiles(it) }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ThemeMode.entries.forEach { mode ->
                 FilterChip(
                     selected = settings.themeMode == mode,
                     onClick = { vm.setTheme(mode) },
-                    label = { Text(mode.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    label = { Text(stringResource(mode.labelRes)) },
                 )
             }
         }
 
         HorizontalDivider()
-        Section("Band colours")
-        Button(onClick = { vm.resetBandColors() }) { Text("Reset to defaults") }
+        Section(stringResource(R.string.settings_band_colours))
+        Button(onClick = { vm.resetBandColors() }) { Text(stringResource(R.string.settings_reset_defaults)) }
         Band.ordered.forEach { band ->
             BandColorRow(band, settings.bandColorOverrides) { color -> vm.setBandColor(band.name, color) }
         }
 
         if (settings.recentCalls.isNotEmpty()) {
             HorizontalDivider()
-            Section("Recent callsigns")
+            Section(stringResource(R.string.settings_recent_callsigns))
             settings.recentCalls.forEach { call ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(call)
                     IconButton(onClick = { vm.removeRecentCall(call) }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Remove")
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.settings_remove))
                     }
                 }
             }
@@ -148,15 +156,25 @@ private fun BandColorRow(band: Band, overrides: Map<String, Long>, onPick: (Long
             Box(Modifier.size(22.dp).clip(CircleShape).background(Format.bandColor(band, overrides)))
         }
         if (expanded) {
+            val swatchDesc = stringResource(R.string.settings_pick_colour, band.label)
             FlowRow(Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PALETTE.forEach { argb ->
+                    // Wrap the 28dp swatch so the touch target meets the 48dp minimum and
+                    // expose a TalkBack description.
                     Box(
                         Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(Color(argb))
-                            .clickable { onPick(argb); expanded = false },
-                    )
+                            .minimumInteractiveComponentSize()
+                            .clickable { onPick(argb); expanded = false }
+                            .semantics { contentDescription = swatchDesc },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color(argb)),
+                        )
+                    }
                 }
             }
         }

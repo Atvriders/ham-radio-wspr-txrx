@@ -17,25 +17,30 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.atvriders.wsprtxrx.R
 import com.atvriders.wsprtxrx.core.Band
 import com.atvriders.wsprtxrx.ui.Format
 import com.atvriders.wsprtxrx.ui.SpotsViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -49,17 +54,22 @@ fun ChartsScreen(vm: SpotsViewModel) {
     val windowSec = query.timeRangeMinutes * 60L
 
     val bucketCount = 24
-    val buckets = remember(ui.spots, windowSec) {
-        ChartData.timeBuckets(ui.spots, nowSec, windowSec, buckets = bucketCount)
+    // Move bucketing / SNR sorting off the composition thread (Dispatchers.Default).
+    val buckets by produceState(emptyList<TimeBucket>(), ui.spots, windowSec, nowSec) {
+        value = withContext(Dispatchers.Default) {
+            ChartData.timeBuckets(ui.spots, nowSec, windowSec, buckets = bucketCount)
+        }
     }
-    val snr = remember(ui.spots) { ChartData.snrSeries(ui.spots) }
+    val snr by produceState(emptyList<SnrPoint>(), ui.spots) {
+        value = withContext(Dispatchers.Default) { ChartData.snrSeries(ui.spots) }
+    }
 
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         com.atvriders.wsprtxrx.ui.ErrorBanner(ui.error, onRetry = { vm.search() })
-        Text("Spots over time", fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.charts_spots_over_time), fontWeight = FontWeight.Bold)
         SpotCountChart(
             buckets = buckets,
             bandColors = settings.bandColorOverrides,
@@ -70,7 +80,7 @@ fun ChartsScreen(vm: SpotsViewModel) {
         )
 
         HorizontalDivider()
-        Text("SNR over time", fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.charts_snr_over_time), fontWeight = FontWeight.Bold)
         SnrChart(snr, settings.bandColorOverrides)
 
         HorizontalDivider()
@@ -100,17 +110,18 @@ private fun SpotCountChart(
 ) {
     val windowLabel = formatWindow(windowMinutes)
     val bucketLabel = formatWindow((windowMinutes / bucketCount.coerceAtLeast(1)).coerceAtLeast(1))
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     if (buckets.isEmpty() || buckets.all { it.total == 0 }) {
-        Text("No spots in range", color = Color.Gray)
+        Text(stringResource(R.string.charts_no_spots_range), color = muted)
         Text(
-            "Spots per $bucketLabel over last $windowLabel",
-            color = Color.Gray,
+            stringResource(R.string.charts_spots_per_window, bucketLabel, windowLabel),
+            color = muted,
             fontSize = 11.sp,
         )
         return
     }
     val maxTotal = (buckets.maxOfOrNull { it.total } ?: 1).coerceAtLeast(1)
-    val gridColor = Color.LightGray.copy(alpha = 0.5f)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
 
     Row(Modifier.fillMaxWidth().height(160.dp)) {
         // Y-axis: max at top, 0 at bottom.
@@ -119,8 +130,8 @@ private fun SpotCountChart(
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = androidx.compose.ui.Alignment.End,
         ) {
-            Text("$maxTotal", color = Color.Gray, fontSize = 11.sp)
-            Text("0", color = Color.Gray, fontSize = 11.sp)
+            Text("$maxTotal", color = muted, fontSize = 11.sp)
+            Text("0", color = muted, fontSize = 11.sp)
         }
         Canvas(Modifier.weight(1f).fillMaxHeight()) {
             // Horizontal gridlines at 0/50/100% (and the baseline).
@@ -152,12 +163,12 @@ private fun SpotCountChart(
     }
     // X-axis: start time (left) to "now" (right).
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(axisTime(startSec), color = Color.Gray, fontSize = 11.sp)
-        Text("now (${axisTime(nowSec)})", color = Color.Gray, fontSize = 11.sp)
+        Text(axisTime(startSec), color = muted, fontSize = 11.sp)
+        Text(stringResource(R.string.charts_now_at, axisTime(nowSec)), color = muted, fontSize = 11.sp)
     }
     Text(
-        "Spots per $bucketLabel over last $windowLabel (UTC)",
-        color = Color.Gray,
+        stringResource(R.string.charts_spots_per_window_utc, bucketLabel, windowLabel),
+        color = muted,
         fontSize = 11.sp,
     )
     BandLegend(buckets.flatMap { it.countsByBand.keys }.distinct(), bandColors)
@@ -165,8 +176,9 @@ private fun SpotCountChart(
 
 @Composable
 private fun SnrChart(points: List<SnrPoint>, bandColors: Map<String, Long>) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     if (points.size < 2) {
-        Text("Not enough data", color = Color.Gray); return
+        Text(stringResource(R.string.charts_not_enough_data), color = muted); return
     }
     val minSnr = points.minOf { it.snr }.toFloat()
     val maxSnr = points.maxOf { it.snr }.toFloat()
@@ -174,7 +186,7 @@ private fun SnrChart(points: List<SnrPoint>, bandColors: Map<String, Long>) {
     val tMin = points.first().timeSec
     val tMax = points.last().timeSec
     val tRange = (tMax - tMin).toFloat().coerceAtLeast(1f)
-    val gridColor = Color.LightGray.copy(alpha = 0.5f)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
 
     Row(Modifier.fillMaxWidth().height(160.dp)) {
         Column(
@@ -182,8 +194,8 @@ private fun SnrChart(points: List<SnrPoint>, bandColors: Map<String, Long>) {
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = androidx.compose.ui.Alignment.End,
         ) {
-            Text("${maxSnr.toInt()} dB", color = Color.Gray, fontSize = 11.sp)
-            Text("${minSnr.toInt()} dB", color = Color.Gray, fontSize = 11.sp)
+            Text(stringResource(R.string.charts_snr_db, maxSnr.toInt()), color = muted, fontSize = 11.sp)
+            Text(stringResource(R.string.charts_snr_db, minSnr.toInt()), color = muted, fontSize = 11.sp)
         }
         Canvas(Modifier.weight(1f).fillMaxHeight()) {
             for (frac in listOf(0f, 0.5f, 1f)) {
@@ -207,8 +219,8 @@ private fun SnrChart(points: List<SnrPoint>, bandColors: Map<String, Long>) {
         }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(axisTime(tMin), color = Color.Gray, fontSize = 11.sp)
-        Text(axisTime(tMax), color = Color.Gray, fontSize = 11.sp)
+        Text(axisTime(tMin), color = muted, fontSize = 11.sp)
+        Text(axisTime(tMax), color = muted, fontSize = 11.sp)
     }
 }
 
@@ -229,7 +241,7 @@ private fun BandLegend(bands: List<Band>, bandColors: Map<String, Long>) {
                         .size(10.dp)
                         .background(Format.bandColor(band, bandColors)),
                 )
-                Text(band.label, color = Color.Gray)
+                Text(band.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -238,37 +250,40 @@ private fun BandLegend(bands: List<Band>, bandColors: Map<String, Long>) {
 @Composable
 private fun Head2HeadSection(vm: SpotsViewModel) {
     val ui by vm.ui.collectAsState()
-    val receivers = remember(ui.spots) { ChartData.receivers(ui.spots) }
+    val receivers by produceState(emptyList<String>(), ui.spots) {
+        value = withContext(Dispatchers.Default) { ChartData.receivers(ui.spots) }
+    }
     var a by remember { mutableStateOf<String?>(null) }
     var b by remember { mutableStateOf<String?>(null) }
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Text("Head2Head — receiver comparison", fontWeight = FontWeight.Bold)
-    Text(
-        "Compare two receivers on the transmissions both heard (no averaging).",
-        color = Color.Gray,
-    )
+    Text(stringResource(R.string.charts_h2h_title), fontWeight = FontWeight.Bold)
+    Text(stringResource(R.string.charts_h2h_body), color = muted)
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StationPicker("Station A", a, receivers) { a = it }
-        StationPicker("Station B", b, receivers) { b = it }
+        StationPicker(stringResource(R.string.charts_h2h_station_a), a, receivers) { a = it }
+        StationPicker(stringResource(R.string.charts_h2h_station_b), b, receivers) { b = it }
     }
-    val rows = remember(ui.spots, a, b) {
-        if (a != null && b != null) ChartData.head2head(ui.spots, a!!, b!!) else emptyList()
+    // Head2Head pairing computed off the composition thread.
+    val rows by produceState(emptyList<Head2HeadRow>(), ui.spots, a, b) {
+        value = withContext(Dispatchers.Default) {
+            if (a != null && b != null) ChartData.head2head(ui.spots, a!!, b!!) else emptyList()
+        }
     }
     if (a != null && b != null) {
         if (rows.isEmpty()) {
-            Text("No transmissions heard by both.", color = Color.Gray)
+            Text(stringResource(R.string.charts_h2h_none), color = muted)
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("TX", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.charts_h2h_tx), fontWeight = FontWeight.SemiBold)
                 Text("$a", fontWeight = FontWeight.SemiBold)
                 Text("$b", fontWeight = FontWeight.SemiBold)
-                Text("Δ", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.charts_h2h_delta), fontWeight = FontWeight.SemiBold)
             }
             rows.take(50).forEach { r ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(r.txCall, fontFamily = FontFamily.Monospace)
-                    Text("${r.snrA}", color = Format.snrColor(r.snrA))
-                    Text("${r.snrB}", color = Format.snrColor(r.snrB))
+                    Text("${Format.snrGlyph(r.snrA)} ${r.snrA}", color = Format.snrColor(r.snrA))
+                    Text("${Format.snrGlyph(r.snrB)} ${r.snrB}", color = Format.snrColor(r.snrB))
                     Text("${r.snrA - r.snrB}", fontFamily = FontFamily.Monospace)
                 }
             }

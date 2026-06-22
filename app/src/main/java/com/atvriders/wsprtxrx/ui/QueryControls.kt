@@ -31,8 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.atvriders.wsprtxrx.R
 import com.atvriders.wsprtxrx.core.Band
 import com.atvriders.wsprtxrx.data.model.Direction
 import com.atvriders.wsprtxrx.data.model.SpotQuery
@@ -71,7 +73,7 @@ fun QueryControls(
         OutlinedTextField(
             value = text,
             onValueChange = { text = it.uppercase() },
-            label = { Text("Callsign or grid") },
+            label = { Text(stringResource(R.string.query_search_hint)) },
             singleLine = true,
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -85,7 +87,7 @@ fun QueryControls(
             badge = { if (activeFilters > 0) Badge { Text("$activeFilters") } },
         ) {
             IconButton(onClick = { showFilters = true }) {
-                Icon(Icons.Filled.FilterList, contentDescription = "Filters")
+                Icon(Icons.Filled.FilterList, contentDescription = stringResource(R.string.query_filters))
             }
         }
     }
@@ -122,6 +124,12 @@ fun QueryControls(
     }
 }
 
+/** Localized short label for a time-range in minutes, e.g. "15m" or "2h". */
+@Composable
+fun timeRangeLabel(minutes: Int): String =
+    if (minutes < 60) stringResource(R.string.time_minutes, minutes)
+    else stringResource(R.string.time_hours, minutes / 60)
+
 private fun applyText(query: SpotQuery, text: String): SpotQuery {
     val t = text.trim()
     // A grid is letters+digits with no slash and looks like "FN42"; otherwise treat as call.
@@ -143,7 +151,7 @@ private fun FilterSheet(
         Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Bands")
+        Text(stringResource(R.string.filter_bands))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Band.ordered.forEach { band ->
                 FilterChip(
@@ -158,24 +166,24 @@ private fun FilterSheet(
             }
         }
 
-        Text("Time range")
+        Text(stringResource(R.string.filter_time_range))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(15, 30, 60, 120).forEach { minutes ->
                 FilterChip(
                     selected = query.timeRangeMinutes == minutes,
                     onClick = { onQueryChange(query.copy(timeRangeMinutes = minutes)) },
-                    label = { Text(if (minutes < 60) "${minutes}m" else "${minutes / 60}h") },
+                    label = { Text(timeRangeLabel(minutes)) },
                 )
             }
         }
 
-        Text("Direction")
+        Text(stringResource(R.string.filter_direction))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Direction.entries.forEach { dir ->
                 FilterChip(
                     selected = query.direction == dir,
                     onClick = { onQueryChange(query.copy(direction = dir)) },
-                    label = { Text(dir.name) },
+                    label = { Text(stringResource(dir.labelRes)) },
                 )
             }
         }
@@ -184,7 +192,7 @@ private fun FilterSheet(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Unique spots only")
+            Text(stringResource(R.string.filter_unique_only))
             Switch(
                 checked = query.uniqueOnly,
                 onCheckedChange = { onQueryChange(query.copy(uniqueOnly = it)) },
@@ -194,6 +202,6 @@ private fun FilterSheet(
         androidx.compose.material3.Button(
             onClick = onApply,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Apply") }
+        ) { Text(stringResource(R.string.filter_apply)) }
     }
 }

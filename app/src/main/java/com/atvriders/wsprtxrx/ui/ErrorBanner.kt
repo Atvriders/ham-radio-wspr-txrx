@@ -12,7 +12,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.atvriders.wsprtxrx.R
 
 /**
  * A dismissable-less error banner with a Retry action, shown when a whole search fails
@@ -33,7 +35,7 @@ fun ErrorBanner(error: String?, onRetry: () -> Unit, modifier: Modifier = Modifi
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Couldn't load spots",
+                    stringResource(R.string.spots_load_failed_title),
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     style = MaterialTheme.typography.labelLarge,
                 )
@@ -43,7 +45,7 @@ fun ErrorBanner(error: String?, onRetry: () -> Unit, modifier: Modifier = Modifi
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            TextButton(onClick = onRetry) { Text("Retry") }
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
         }
     }
 }

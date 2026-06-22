@@ -38,4 +38,114 @@
     <string name="tx_notification_channel">WSPR transmit</string>
     <string name="tx_notification_title">Transmitting WSPR</string>
     <string name="tx_notification_text">Keeping the transmission alive — do not close the app.</string>
+
+    <!-- Query controls / filters -->
+    <string name="query_search_hint">Callsign or grid</string>
+    <string name="query_filters">Filters</string>
+    <string name="filter_bands">Bands</string>
+    <string name="filter_time_range">Time range</string>
+    <string name="filter_direction">Direction</string>
+    <string name="filter_unique_only">Unique spots only</string>
+    <string name="filter_apply">Apply</string>
+
+    <!-- Direction enum -->
+    <string name="direction_tx">TX</string>
+    <string name="direction_rx">RX</string>
+    <string name="direction_both">Both</string>
+
+    <!-- Spot sort enum -->
+    <string name="sort_time">Time</string>
+    <string name="sort_snr">SNR</string>
+    <string name="sort_distance">Distance</string>
+    <string name="sort_band">Band</string>
+
+    <!-- Theme mode enum -->
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
+    <!-- Spots list / detail -->
+    <string name="spots_select_prompt">Select a spot</string>
+    <string name="spots_empty">No spots</string>
+    <string name="spots_unavailable">Unavailable: %1$s</string>
+    <string name="spots_load_failed_title">Couldn\'t load spots</string>
+    <string name="action_retry">Retry</string>
+    <string name="spots_meta">%1$s · %2$s MHz · %3$s</string>
+    <string name="unit_db">%1$d dB</string>
+    <string name="band_unknown">?</string>
+
+    <string name="detail_transmitter">Transmitter</string>
+    <string name="detail_receiver">Receiver</string>
+    <string name="detail_band">Band</string>
+    <string name="detail_frequency">Frequency</string>
+    <string name="detail_frequency_mhz">%1$s MHz</string>
+    <string name="detail_snr">SNR</string>
+    <string name="detail_drift">Drift</string>
+    <string name="detail_drift_hz">%1$d Hz</string>
+    <string name="detail_power">Power</string>
+    <string name="detail_power_dbm">%1$d dBm</string>
+    <string name="detail_distance">Distance</string>
+    <string name="detail_bearing">Bearing</string>
+    <string name="detail_time">Time</string>
+    <string name="detail_source">Source</string>
+    <string name="detail_mode">Mode</string>
+    <string name="detail_qrz_lookup">QRZ lookup — %1$s</string>
+    <string name="detail_name">Name</string>
+    <string name="detail_qth">QTH</string>
+    <string name="detail_grid">Grid</string>
+    <string name="detail_country">Country</string>
+    <string name="detail_no_qrz">No QRZ data (set login in Settings for details).</string>
+    <string name="detail_search_call">Search %1$s</string>
+    <string name="detail_qrz_com">QRZ.com</string>
+
+    <!-- Charts -->
+    <string name="charts_spots_over_time">Spots over time</string>
+    <string name="charts_snr_over_time">SNR over time</string>
+    <string name="charts_no_spots_range">No spots in range</string>
+    <string name="charts_spots_per_window">Spots per %1$s over last %2$s</string>
+    <string name="charts_spots_per_window_utc">Spots per %1$s over last %2$s (UTC)</string>
+    <string name="charts_not_enough_data">Not enough data</string>
+    <string name="charts_now_at">now (%1$s)</string>
+    <string name="charts_snr_db">%1$d dB</string>
+    <string name="charts_h2h_title">Head2Head — receiver comparison</string>
+    <string name="charts_h2h_body">Compare two receivers on the transmissions both heard (no averaging).</string>
+    <string name="charts_h2h_station_a">Station A</string>
+    <string name="charts_h2h_station_b">Station B</string>
+    <string name="charts_h2h_none">No transmissions heard by both.</string>
+    <string name="charts_h2h_tx">TX</string>
+    <string name="charts_h2h_delta">Δ</string>
+
+    <!-- Settings -->
+    <string name="settings_data_sources">Data sources</string>
+    <string name="settings_qrz_login">QRZ.com login</string>
+    <string name="settings_qrz_hint">Optional. Paid accounts get the most detail in spot lookups.</string>
+    <string name="settings_username">Username</string>
+    <string name="settings_password">Password</string>
+    <string name="settings_save_qrz">Save QRZ login</string>
+    <string name="settings_default_time_range">Default time range</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_use_miles">Use miles</string>
+    <string name="settings_band_colours">Band colours</string>
+    <string name="settings_reset_defaults">Reset to defaults</string>
+    <string name="settings_recent_callsigns">Recent callsigns</string>
+    <string name="settings_remove">Remove</string>
+    <string name="settings_pick_colour">Choose colour for %1$s</string>
+
+    <!-- Time-range chips -->
+    <string name="time_minutes">%1$dm</string>
+    <string name="time_hours">%1$dh</string>
+
+    <!-- Map -->
+    <string name="map_close">Close</string>
+    <string name="map_role_spots">%1$s · %2$d spots</string>
+    <string name="map_role_spot_one">%1$s · %2$d spot</string>
+    <string name="map_filter_for">Filter spots for %1$s</string>
+    <string name="map_role_both">Both (TX &amp; RX)</string>
+    <string name="map_role_tx">Transmitter</string>
+    <string name="map_role_rx">Receiver</string>
+    <string name="map_station_marker">Station %1$s, %2$s</string>
+    <string name="map_legend_tx">TX</string>
+    <string name="map_legend_rx">RX</string>
+    <string name="map_legend_both">Both</string>
+    <string name="map_loading">Loading map…</string>
 </resources>

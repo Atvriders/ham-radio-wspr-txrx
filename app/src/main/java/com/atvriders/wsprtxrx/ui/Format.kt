@@ -27,12 +27,27 @@ object Format {
         return Color(argb)
     }
 
-    /** Green→amber→red scale for SNR readability (stronger = greener). */
+    /**
+     * Green→amber→red scale for SNR readability (stronger = greener). These are
+     * deliberately fixed semantic colors that meet contrast on both light and dark
+     * surfaces; pair with [snrGlyph] so the meaning is not carried by color alone.
+     */
     fun snrColor(snr: Int): Color = when {
         snr >= -10 -> Color(0xFF2E7D32)
         snr >= -20 -> Color(0xFF9E9D24)
         snr >= -25 -> Color(0xFFEF6C00)
         else -> Color(0xFFC62828)
+    }
+
+    /**
+     * Non-color strength cue for SNR (so color-blind users get the signal too):
+     * stronger = more filled bars.
+     */
+    fun snrGlyph(snr: Int): String = when {
+        snr >= -10 -> "▮▮▮"
+        snr >= -20 -> "▮▮▯"
+        snr >= -25 -> "▮▯▯"
+        else -> "▯▯▯"
     }
 
     fun spotTitle(spot: Spot): String = "${spot.txCall} → ${spot.rxCall}"

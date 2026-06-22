@@ -28,15 +28,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
+import com.atvriders.wsprtxrx.R
 import com.atvriders.wsprtxrx.data.model.Spot
 import com.atvriders.wsprtxrx.ui.Format
 import com.atvriders.wsprtxrx.ui.QueryControls
 import com.atvriders.wsprtxrx.ui.SpotSort
 import com.atvriders.wsprtxrx.ui.SpotsViewModel
+import com.atvriders.wsprtxrx.ui.labelRes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +79,10 @@ fun SpotsScreen(vm: SpotsViewModel, widthSizeClass: WindowWidthSizeClass) {
                     val sel = ui.selected
                     if (sel == null) {
                         Box(Modifier.fillMaxSize(), Alignment.Center) {
-                            Text("Select a spot", color = Color.Gray)
+                            Text(
+                                stringResource(R.string.spots_select_prompt),
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     } else {
                         SpotDetail(sel, ui, settings.useMiles, onSearchCall = vm::searchCallsign)
@@ -104,11 +112,14 @@ fun SpotsScreen(vm: SpotsViewModel, widthSizeClass: WindowWidthSizeClass) {
 @Composable
 private fun FailuresBanner(failedSources: List<String>) {
     if (failedSources.isEmpty()) return
-    Surface(color = Color(0x33FF5252), modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        color = androidx.compose.material3.MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Text(
-            "Unavailable: ${failedSources.joinToString(", ")}",
+            stringResource(R.string.spots_unavailable, failedSources.joinToString(", ")),
             Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            color = Color(0xFFB71C1C),
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onErrorContainer,
         )
     }
 }
@@ -124,7 +135,7 @@ private fun SortRow(sort: SpotSort, onSort: (SpotSort) -> Unit) {
             FilterChip(
                 selected = sort == s,
                 onClick = { onSort(s) },
-                label = { Text(s.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                label = { Text(stringResource(s.labelRes)) },
             )
         }
     }
@@ -140,7 +151,12 @@ private fun SpotList(
     modifier: Modifier = Modifier,
 ) {
     if (spots.isEmpty()) {
-        Box(modifier.fillMaxSize(), Alignment.Center) { Text("No spots", color = Color.Gray) }
+        Box(modifier.fillMaxSize(), Alignment.Center) {
+            Text(
+                stringResource(R.string.spots_empty),
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         return
     }
     LazyColumn(modifier) {
@@ -159,13 +175,16 @@ private fun SpotRow(
     bandColors: Map<String, Long>,
     onSelect: (Spot) -> Unit,
 ) {
-    val bg = if (isSelected) Color(0x223F51B5) else Color.Transparent
+    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val bg = if (isSelected) scheme.secondaryContainer else Color.Transparent
+    val muted = scheme.onSurfaceVariant
     Row(
         Modifier
             .fillMaxWidth()
             .background(bg)
             .clickable { onSelect(spot) }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .semantics { if (isSelected) selected = true },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -178,15 +197,25 @@ private fun SpotRow(
         Column(Modifier.weight(1f)) {
             Text(Format.spotTitle(spot), fontWeight = FontWeight.SemiBold)
             Text(
-                "${spot.band?.label ?: "?"} · ${Format.freqMHz(spot.freqHz)} MHz · ${spot.source.label}",
+                stringResource(
+                    R.string.spots_meta,
+                    spot.band?.label ?: stringResource(R.string.band_unknown),
+                    Format.freqMHz(spot.freqHz),
+                    spot.source.label,
+                ),
                 fontFamily = FontFamily.Monospace,
-                color = Color.Gray,
+                color = muted,
             )
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("${spot.snr} dB", color = Format.snrColor(spot.snr), fontWeight = FontWeight.Bold)
-            Text(Format.distance(spot.distanceKm, useMiles), color = Color.Gray)
-            Text(Format.timeUtc(spot.timeUtc), color = Color.Gray, fontFamily = FontFamily.Monospace)
+            // Non-color cue: a strength glyph next to the colored SNR so it reads without color.
+            Text(
+                "${Format.snrGlyph(spot.snr)} ${stringResource(R.string.unit_db, spot.snr)}",
+                color = Format.snrColor(spot.snr),
+                fontWeight = FontWeight.Bold,
+            )
+            Text(Format.distance(spot.distanceKm, useMiles), color = muted)
+            Text(Format.timeUtc(spot.timeUtc), color = muted, fontFamily = FontFamily.Monospace)
         }
     }
 }
