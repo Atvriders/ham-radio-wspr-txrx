@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Ham Radio WSPR TX/RX</title>
+<style>
+  :root { --navy:#0b2a3a; --sky:#4fc3f7; --ink:#16242c; --muted:#5b6b75; --line:#dce4e8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.65 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         color:var(--ink); background:#f6f8f9; }
+  header { background:var(--navy); color:#fff; padding:28px 20px; }
+  .wrap { max-width:760px; margin:0 auto; padding:0 20px; }
+  header h1 { margin:0; font-size:1.5rem; }
+  header p { margin:6px 0 0; color:#bcd3df; font-size:.95rem; }
+  main { padding:28px 0 64px; }
+  h2 { margin:1.8em 0 .4em; font-size:1.18rem; color:var(--navy); border-bottom:1px solid var(--line); padding-bottom:.2em; }
+  h3 { margin:1.2em 0 .2em; font-size:1rem; }
+  a { color:#0277bd; }
+  code { background:#eef3f5; padding:.1em .35em; border-radius:4px; font-size:.9em; }
+  table { border-collapse:collapse; width:100%; margin:.6em 0; font-size:.95rem; }
+  th,td { border:1px solid var(--line); padding:.5em .6em; text-align:left; vertical-align:top; }
+  th { background:#eef3f5; }
+  blockquote { margin:.8em 0; padding:.6em .9em; background:#fff8e1; border-left:4px solid #ffb300; border-radius:4px; }
+  .muted { color:var(--muted); font-size:.9rem; }
+  footer { color:var(--muted); font-size:.85rem; padding:24px 0; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>Privacy Policy — Ham Radio WSPR TX/RX</h1>
+  <p>Last updated: 22 June 2026</p>
+</div></header>
+<main class="wrap">
+  <p>This privacy policy describes how the <strong>Ham Radio WSPR TX/RX</strong> Android app
+  (&ldquo;the app&rdquo;, &ldquo;we&rdquo;) handles your information. The app is a tool for amateur
+  radio operators to view WSPR (Weak Signal Propagation Reporter) reception reports and to
+  transmit WSPR signals.</p>
+
+  <h2>Summary</h2>
+  <ul>
+    <li>The app contains <strong>no advertising and no analytics/tracking SDKs</strong>.</li>
+    <li>Your device <strong>location</strong> is used <strong>only on your device</strong> to compute
+        your Maidenhead grid locator. It is <strong>never uploaded</strong> by the app.</li>
+    <li>Some features send data you enter (callsign, grid, search terms; QRZ credentials) to
+        third-party amateur-radio services so they can return results. These are listed below.</li>
+    <li>Settings (including your QRZ credentials) are stored <strong>only on your device</strong> and
+        are excluded from cloud backup and device-to-device transfer.</li>
+  </ul>
+
+  <h2>Information the app uses</h2>
+  <h3>Location (approximate / coarse)</h3>
+  <p>When you tap the <strong>GPS</strong> button on the Transmit screen, the app requests the
+  <code>ACCESS_COARSE_LOCATION</code> permission and reads your last known approximate location to
+  fill in your Maidenhead grid square. This computation happens entirely on your device. The app
+  does <strong>not</strong> upload, store off-device, or share your raw coordinates. You can decline
+  the permission and type your grid manually. The app does not use background location.</p>
+
+  <h3>Amateur callsign and grid locator</h3>
+  <p>When you transmit, or when you search for spots, the callsign and/or grid you enter are used to
+  build the on-air WSPR message and/or the queries sent to the data services below. Your most recent
+  searched callsigns are stored on your device to populate the search box.</p>
+
+  <h3>QRZ.com credentials (optional)</h3>
+  <p>If you choose to enter QRZ.com credentials in Settings to look up station details, your QRZ
+  <strong>username and password</strong> are stored on your device and are sent to QRZ.com
+  (<code>xmldata.qrz.com</code>) over HTTPS to authenticate and perform callsign lookups. If you do
+  not enter QRZ credentials, no data is sent to QRZ.com.</p>
+  <blockquote>The QRZ password is encrypted at rest on your device using the Android Keystore and is
+  excluded from backups. It is sent to QRZ.com over HTTPS only to authenticate your lookups.</blockquote>
+
+  <h2>Third parties the app sends data to</h2>
+  <p>The app contacts these services only to provide the feature you are using. Each has its own
+  privacy policy:</p>
+  <table>
+    <tr><th>Service</th><th>What is sent</th><th>When</th></tr>
+    <tr><td><strong>wspr.live</strong> (db1.wspr.live)</td><td>Search parameters (callsign, grid, band, time range)</td><td>When you search/refresh spots (default source)</td></tr>
+    <tr><td><strong>PSKReporter</strong> (pskreporter.info)</td><td>Search parameters (callsign, grid, band)</td><td>When PSKReporter is enabled as a source</td></tr>
+    <tr><td><strong>Reverse Beacon Network</strong> (telnet.reversebeacon.net)</td><td>A login callsign over a plain (cleartext) telnet connection</td><td>When RBN is enabled as a source</td></tr>
+    <tr><td><strong>QRZ.com</strong> (xmldata.qrz.com)</td><td>Your QRZ username + password; the callsign you look up</td><td>When you have entered QRZ credentials and view station details</td></tr>
+    <tr><td><strong>OpenFreeMap</strong> (tiles.openfreemap.org)</td><td>Standard map tile/style requests (includes your IP, as with any web request)</td><td>When you open the Map screen</td></tr>
+  </table>
+  <p>The Reverse Beacon Network connection is <strong>cleartext (unencrypted) telnet</strong>. By
+  default the app uses a placeholder login callsign and does not send your personal callsign over
+  this connection.</p>
+
+  <h2>Data stored on your device</h2>
+  <ul>
+    <li>App settings: enabled data sources, QRZ username/password (password encrypted), default time
+        range, units, theme, recent searched callsigns, band colour overrides (in a private DataStore).</li>
+    <li>A local cache of recently fetched spots (a private Room database), pruned automatically after 7 days.</li>
+  </ul>
+  <p>This on-device data is excluded from Android cloud Auto Backup and device-to-device transfer.
+  Uninstalling the app removes all of it. You can also clear it via Android Settings &rarr; Apps &rarr;
+  Storage &rarr; Clear storage.</p>
+
+  <h2>Data deletion</h2>
+  <ul>
+    <li><strong>On-device data:</strong> clear all stored data at any time by uninstalling the app, or
+        via Android Settings &rarr; Apps &rarr; Ham Radio WSPR TX/RX &rarr; Storage &rarr; Clear storage.
+        To remove only QRZ credentials, clear the username/password fields in the app&rsquo;s Settings.</li>
+    <li><strong>Data held by third parties:</strong> to delete data associated with your QRZ.com account,
+        contact QRZ.com. Spot/reception data on wspr.live, PSKReporter, and the Reverse Beacon Network is
+        operated by those projects under their own policies.</li>
+  </ul>
+
+  <h2>Children</h2>
+  <p>The app is not directed to children and does not knowingly collect data from children.</p>
+
+  <h2>Changes</h2>
+  <p>We may update this policy; the &ldquo;last updated&rdquo; date will change accordingly.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: <a href="mailto:klassenjames0@gmail.com">klassenjames0@gmail.com</a></p>
+
+  <footer>Ham Radio WSPR TX/RX &middot; This app generates audio only and does not transmit RF;
+  transmitting on the air requires your own transceiver and a valid amateur radio licence.</footer>
+</main>
+</body>
+</html>

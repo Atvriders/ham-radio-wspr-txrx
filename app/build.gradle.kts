@@ -17,7 +17,7 @@ android {
         // Driven from CI so each Play upload has a strictly-greater versionCode and a
         // tag-derived versionName; falls back to local defaults for local builds.
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
-        versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
+        versionName = System.getenv("VERSION_NAME") ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }

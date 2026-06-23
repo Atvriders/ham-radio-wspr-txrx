@@ -1,6 +1,6 @@
 # Privacy Policy — Ham Radio WSPR TX/RX
 
-_Last updated: 2026-06-22 (DRAFT — review and host at a public URL before Play submission)_
+_Last updated: 2026-06-22_
 
 This privacy policy describes how the **Ham Radio WSPR TX/RX** Android app
 ("the app", "we") handles your information. The app is a tool for amateur radio
@@ -40,9 +40,9 @@ QRZ **username and password** are stored on your device and are sent to QRZ.com
 (`xmldata.qrz.com`) over HTTPS to authenticate and perform callsign lookups. If you do
 not enter QRZ credentials, no data is sent to QRZ.com.
 
-> Note: in the current version the QRZ password is stored in the app's private
-> on-device settings in plaintext (excluded from backups). A future version will move
-> it to the Android Keystore. If this concerns you, do not enter QRZ credentials.
+> Note: the QRZ password is encrypted at rest on your device using the Android Keystore
+> and is excluded from backups. It is sent to QRZ.com over HTTPS only to authenticate
+> your lookups.
 
 ## Third parties the app sends data to
 
