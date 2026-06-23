@@ -1,7 +1,41 @@
 # Google Play Data Safety form — declaration checklist
 
-_DRAFT for Ham Radio WSPR TX/RX. Use this to fill in Play Console → App content →
+_For Ham Radio WSPR TX/RX. Use this to fill in Play Console → App content →
 Data safety. Answers must stay consistent with `docs/PRIVACY_POLICY.md`._
+
+## Importing via CSV (faster than clicking through the form)
+
+The CSV cannot be written from scratch — Google generates it with internal Question IDs
+specific to the current form version. Do this:
+
+1. On the **Data safety** page, click **Export to CSV** (downloads the template: one row per
+   answer choice, with a `Response value` column and an `Answer requirement` column —
+   `REQUIRED` / `OPTIONAL` / `MULTIPLE_CHOICE`).
+2. Fill the **`Response value`** column with `TRUE` / `FALSE` (leave blank where allowed),
+   using the answer key below.
+3. **Import** the file back (this **overwrites** the current form answers).
+
+Paste the exported CSV here and I'll return it fully filled.
+
+### Answer key (what each question resolves to)
+- **Does your app collect or share any of the required user data types?** → **Yes**
+- **All collected data encrypted in transit?** → **Yes**
+- **Provide a way to request data deletion?** → **Yes**
+- **Location (Approximate / Precise)** → **No** (used on-device only; never transmitted)
+- **Personal info → User IDs** (amateur callsign; QRZ username): **Collected = Yes**,
+  purpose **App functionality**, **Optional**, stored on device. (QRZ username only if the
+  user configures QRZ.)
+- **App activity → Search history** (callsign/grid/band searched, sent to wspr.live/PSK):
+  **Collected = Yes**, purpose **App functionality**.
+- **Financial, Health, Messages, Photos/Videos, Audio, Files, Calendar, Contacts, Web
+  history, Device/other IDs** → **No** to all.
+- **Ads / analytics identifiers** → **No** (no ads, no analytics SDKs).
+
+> On "Shared": transfers to wspr.live/PSKReporter/QRZ happen only as a **user-initiated**
+> query for the feature the user requested. If the form asks whether each type is *shared*,
+> you may answer **No** under the user-initiated-transfer basis, **or** answer **Yes** and
+> name wspr.live/PSKReporter/QRZ to be conservative — either is defensible; just keep it
+> consistent with the privacy policy.
 
 ## Overview answers
 
@@ -19,12 +53,14 @@ Data safety. Answers must stay consistent with `docs/PRIVACY_POLICY.md`._
 
 ## Data types to declare
 
-### Location
-- **Approximate location** — **Collected: Yes. Shared: No.**
-  - Purpose: **App functionality** (compute the user's Maidenhead grid on-device).
-  - Processed **ephemerally** / on-device; not sent off device by the app.
-  - Optional (user taps GPS; can be declined).
-  - Do **NOT** declare Precise location — the app requests only `ACCESS_COARSE_LOCATION`.
+### Location — declare NOT collected
+- **Approximate location** — **Collected: No. Shared: No.**
+  - Google defines "collection" as data **transmitted off the device**. The app reads
+    coarse location **only on-device** to compute the Maidenhead grid and **never
+    transmits it**, so under the Data Safety rules location is **not collected**.
+  - Do **NOT** declare Precise or Approximate location collection. (You still request the
+    `ACCESS_COARSE_LOCATION` runtime permission — that is a permission, not a Data Safety
+    collection.)
 
 ### Personal info
 - **Other personal info → Amateur radio callsign (identifier)** — **Collected: Yes.
@@ -39,8 +75,7 @@ Data safety. Answers must stay consistent with `docs/PRIVACY_POLICY.md`._
   - QRZ **username and password** are collected when the user enters them.
   - Purpose: **App functionality** (authenticate to QRZ.com for callsign lookups).
   - Sent to a **third party (QRZ.com)** over HTTPS.
-  - Stored on the device (excluded from backup/transfer). A future version will
-    Keystore-encrypt them.
+  - Stored on the device, **Keystore-encrypted at rest** and excluded from backup/transfer.
 
 ### App activity (search terms)
 - **App activity → Search history** — **Collected: Yes. Shared: Yes.**
