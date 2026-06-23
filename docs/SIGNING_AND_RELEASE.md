@@ -1,5 +1,13 @@
 # Signing & release — getting a Play-uploadable .aab
 
+> ✅ **Already set up.** An upload keystore (`upload-keystore.p12`, PKCS12) was generated and
+> the four signing secrets (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS=upload`,
+> `KEY_PASSWORD`) are configured in the repo, so tagged builds are signed automatically.
+> **Back up `upload-keystore.p12` and `SIGNING-CREDENTIALS.txt`** (in your repo folder,
+> gitignored — they are NOT in git) to a password manager + offline copy. With Play App
+> Signing enabled, a lost *upload* key is recoverable via Google, but keep the backup anyway.
+> The manual steps below are only needed if you ever rotate the key.
+
 The CI already builds a **signed `.aab`** (`bundleRelease`) whenever the four signing
 secrets are present, and falls back to a debug-signed build when they are not. To produce
 a release you can upload to Google Play, do the one-time keystore setup below, then cut a
