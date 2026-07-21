@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.atvriders.wsprtxrx"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.atvriders.wsprtxrx"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         // Driven from CI so each Play upload has a strictly-greater versionCode and a
         // tag-derived versionName; falls back to local defaults for local builds.
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
