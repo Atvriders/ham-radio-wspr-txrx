@@ -17,6 +17,11 @@ data class QrzInfo(
     val country: String?,
 )
 
+/** The callsign-lookup slice a ViewModel needs; lets it be unit-tested off-device. */
+interface CallsignLookup {
+    suspend fun lookup(callsign: String): Result<QrzInfo>
+}
+
 /**
  * Looks up callsigns via the QRZ.com XML API. Requires a QRZ login (paid accounts get
  * the most detail). Without credentials, [lookup] returns a failure and callers simply
@@ -26,11 +31,11 @@ class QrzService(
     private val client: OkHttpClient,
     private val credentials: () -> Pair<String, String>,
     private val baseUrl: String = "https://xmldata.qrz.com/xml/current/",
-) {
+) : CallsignLookup {
     private val mutex = Mutex()
     @Volatile private var sessionKey: String? = null
 
-    suspend fun lookup(callsign: String): Result<QrzInfo> = withContext(Dispatchers.IO) {
+    override suspend fun lookup(callsign: String): Result<QrzInfo> = withContext(Dispatchers.IO) {
         runCatching {
             val key = ensureKey() ?: error("QRZ not configured")
             val info = fetchCallsign(key, callsign)

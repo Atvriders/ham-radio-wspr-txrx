@@ -7,23 +7,37 @@ import com.atvriders.wsprtxrx.data.SpotRepository
 import com.atvriders.wsprtxrx.data.model.Spot
 import com.atvriders.wsprtxrx.data.model.SpotQuery
 import com.atvriders.wsprtxrx.data.prefs.AppSettings
-import com.atvriders.wsprtxrx.data.prefs.SettingsStore
+import com.atvriders.wsprtxrx.data.prefs.SpotsSettings
+import com.atvriders.wsprtxrx.data.qrz.CallsignLookup
 import com.atvriders.wsprtxrx.data.qrz.QrzInfo
-import com.atvriders.wsprtxrx.data.qrz.QrzService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 /** Sort options for the spot table. */
 enum class SpotSort { TIME, SNR, DISTANCE, BAND }
+
+/**
+ * Why a whole search failed, as a closed set the UI maps to a string resource.
+ *
+ * Deliberately not a raw `Throwable.message`: that leaked internal text such as
+ * `Unable to resolve host "db1.wspr.live"` — and, before the cancellation fix below,
+ * `StandaloneCoroutine was cancelled` — straight into the error banner.
+ */
+enum class SearchError { NETWORK, TIMEOUT, GENERIC }
 
 data class SpotsUiState(
     val loading: Boolean = false,
     val spots: List<Spot> = emptyList(),
     val failures: List<SourceFailure> = emptyList(),
-    val error: String? = null,
+    val error: SearchError? = null,
     val sort: SpotSort = SpotSort.TIME,
     val selected: Spot? = null,
     val qrz: QrzInfo? = null,
@@ -37,8 +51,8 @@ data class SpotsUiState(
  */
 class SpotsViewModel(
     private val repository: SpotRepository,
-    private val settingsStore: SettingsStore,
-    private val qrzService: QrzService,
+    private val settingsStore: SpotsSettings,
+    private val qrzService: CallsignLookup,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow(SpotQuery())
@@ -51,6 +65,7 @@ class SpotsViewModel(
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
     private var searchJob: Job? = null
+    private var qrzJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -78,17 +93,29 @@ class SpotsViewModel(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _ui.value = _ui.value.copy(loading = true, error = null)
-            runCatching { repository.search(_query.value) }
-                .onSuccess { r ->
-                    _ui.value = _ui.value.copy(
-                        loading = false,
-                        spots = sortSpots(r.spots, _ui.value.sort),
-                        failures = r.partialFailures,
-                    )
-                }
-                .onFailure { e ->
-                    _ui.value = _ui.value.copy(loading = false, error = e.message ?: "Search failed")
-                }
+            try {
+                val r = repository.search(_query.value)
+                // The sources do blocking OkHttp inside withContext(Dispatchers.IO), and
+                // cancel() cannot interrupt execute(). Without this check a cancelled
+                // search unwinds *after* the search that replaced it has already
+                // written its results, clobbering them.
+                ensureActive()
+                _ui.value = _ui.value.copy(
+                    loading = false,
+                    spots = sortSpots(r.spots, _ui.value.sort),
+                    failures = r.partialFailures,
+                    // Was never reset on success, so any stale banner outlived its cause.
+                    error = null,
+                )
+            } catch (e: CancellationException) {
+                // MUST come first and MUST rethrow. runCatching used to swallow this,
+                // and because onFailure is non-suspending it ran anyway — painting a
+                // permanent "Couldn't load spots / StandaloneCoroutine was cancelled"
+                // banner over perfectly good data on every rapid re-search.
+                throw e
+            } catch (e: Exception) {
+                _ui.value = _ui.value.copy(loading = false, error = classify(e))
+            }
         }
     }
 
@@ -98,12 +125,35 @@ class SpotsViewModel(
     }
 
     private fun lookupQrz(call: String) {
+        // Single-flight, same as search: selecting a second spot must not let the first
+        // lookup's late result land on top of it.
+        qrzJob?.cancel()
         if (_settings.value.qrzUsername.isBlank()) return
         _ui.value = _ui.value.copy(qrzLoading = true)
-        viewModelScope.launch {
-            val info = qrzService.lookup(call).getOrNull()
-            _ui.value = _ui.value.copy(qrz = info, qrzLoading = false)
+        qrzJob = viewModelScope.launch {
+            try {
+                val info = qrzService.lookup(call).getOrNull()
+                ensureActive()
+                _ui.value = _ui.value.copy(qrz = info, qrzLoading = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // A QRZ failure is not a search failure: the detail pane already renders
+                // "No QRZ data", so this must never raise the error banner.
+                _ui.value = _ui.value.copy(qrz = null, qrzLoading = false)
+            }
         }
+    }
+
+    /**
+     * Maps a throwable to the closed [SearchError] set. Raw `message` text must never
+     * reach the banner — it leaked host names and internal coroutine class names.
+     */
+    private fun classify(e: Throwable): SearchError = when (e) {
+        is SocketTimeoutException -> SearchError.TIMEOUT
+        is UnknownHostException -> SearchError.NETWORK
+        is IOException -> SearchError.NETWORK
+        else -> SearchError.GENERIC
     }
 
     fun searchCallsign(call: String) {

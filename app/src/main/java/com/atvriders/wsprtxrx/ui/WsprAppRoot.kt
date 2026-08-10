@@ -1,8 +1,10 @@
 package com.atvriders.wsprtxrx.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
@@ -55,7 +57,15 @@ fun WsprAppRoot(container: AppContainer, windowSizeClass: WindowSizeClass) {
                 }
             },
         ) {
-            Box(Modifier.fillMaxSize().statusBarsPadding()) {
+            // safeDrawing, not statusBarsPadding: the app is edge-to-edge (MainActivity
+            // calls enableEdgeToEdge), and NavigationSuiteScaffold only consumes the
+            // bottom inset in *bar* mode — in rail/drawer mode (tablets, unfolded
+            // foldables, large freeform windows) it consumes only Start, and it never
+            // handles displayCutout in any mode. Content therefore drew under the
+            // navigation bar and cutout. safeDrawing also covers the IME inset, and
+            // windowInsetsPadding honours consumption, so nested imePadding() calls
+            // cannot double-pad.
+            Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 when (current) {
                     Destination.SPOTS -> SpotsScreen(spotsVm, windowSizeClass.widthSizeClass)
                     Destination.MAP -> MapScreen(spotsVm, settings)

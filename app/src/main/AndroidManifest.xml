@@ -48,11 +48,16 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.WsprTxRx">
+        <!-- windowSoftInputMode="adjustResize" is required for the minSdk 26..29 floor:
+             there AndroidX derives Type.ime() from
+             systemWindowInsets.bottom - stableInsets.bottom and reports 0 in an
+             unresized window, so imePadding() would silently do nothing. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.WsprTxRx">
+            android:theme="@style/Theme.WsprTxRx"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

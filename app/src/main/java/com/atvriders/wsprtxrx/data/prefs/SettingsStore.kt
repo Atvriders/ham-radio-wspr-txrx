@@ -36,12 +36,21 @@ data class AppSettings(
     val licenceAcknowledged: Boolean = false,
 )
 
+/**
+ * The settings slice the spot screens need. Lets [com.atvriders.wsprtxrx.ui.SpotsViewModel]
+ * be unit-tested without a DataStore (and therefore without an Android Context).
+ */
+interface SpotsSettings {
+    val settings: Flow<AppSettings>
+    suspend fun addRecentCall(call: String)
+}
+
 class SettingsStore(
     private val context: Context,
     private val crypto: SecretCrypto = SecretCrypto.NONE,
-) {
+) : SpotsSettings {
 
-    val settings: Flow<AppSettings> = context.dataStore.data.map { it.toSettings() }
+    override val settings: Flow<AppSettings> = context.dataStore.data.map { it.toSettings() }
 
     suspend fun setEnabledSources(sources: Set<SourceId>) = edit {
         it[Keys.SOURCES] = sources.map(SourceId::name).toSet()
@@ -79,7 +88,7 @@ class SettingsStore(
         it[Keys.RECENT_CALLS] = json.encodeToString(ListSerializer(String.serializer()), calls)
     }
 
-    suspend fun addRecentCall(call: String) {
+    override suspend fun addRecentCall(call: String) {
         val current = settingsSnapshot().recentCalls
         val updated = (listOf(call.uppercase()) + current.filterNot { it.equals(call, true) }).take(20)
         setRecentCalls(updated)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -64,7 +65,10 @@ fun SettingsScreen(vm: SettingsViewModel) {
     var qrzPass by remember(settings.qrzPassword) { mutableStateOf(settings.qrzPassword) }
 
     Column(
-        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+        // .imePadding() outside verticalScroll so the keyboard shrinks the viewport
+        // (and the masked QRZ password field + Save button stay reachable) rather than
+        // padding the scrolled content.
+        Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Section(stringResource(R.string.settings_data_sources))

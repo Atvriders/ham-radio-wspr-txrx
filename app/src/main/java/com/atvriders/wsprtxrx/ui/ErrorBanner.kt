@@ -22,8 +22,15 @@ import com.atvriders.wsprtxrx.R
  * silent failure isn't mistaken for an empty result. Shared across Spots/Map/Charts.
  */
 @Composable
-fun ErrorBanner(error: String?, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+fun ErrorBanner(error: SearchError?, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     if (error == null) return
+    val detail = stringResource(
+        when (error) {
+            SearchError.NETWORK -> R.string.spots_error_network
+            SearchError.TIMEOUT -> R.string.spots_error_timeout
+            SearchError.GENERIC -> R.string.spots_error_generic
+        },
+    )
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         modifier = modifier.fillMaxWidth(),
@@ -40,7 +47,7 @@ fun ErrorBanner(error: String?, onRetry: () -> Unit, modifier: Modifier = Modifi
                     style = MaterialTheme.typography.labelLarge,
                 )
                 Text(
-                    error,
+                    detail,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     style = MaterialTheme.typography.bodySmall,
                 )

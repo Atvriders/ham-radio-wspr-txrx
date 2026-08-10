@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -182,7 +183,10 @@ fun TxScreen(
     }
 
     Column(
-        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+        // .imePadding() must be OUTSIDE verticalScroll (i.e. earlier in the chain) and
+        // before .padding(): applied inside the scroll it pads the content instead of
+        // shrinking the viewport, and bring-into-view then has nowhere to scroll to.
+        Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(stringResource(R.string.tx_title), fontWeight = FontWeight.Bold)

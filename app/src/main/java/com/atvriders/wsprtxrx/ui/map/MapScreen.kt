@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -54,6 +55,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
@@ -142,6 +144,8 @@ private fun SpotMap(
         MapLibre.getInstance(context)
         MapView(context).apply { onCreate(null) }
     }
+    val density = LocalDensity.current
+    var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var pointSource by remember { mutableStateOf<GeoJsonSource?>(null) }
     var lineSource by remember { mutableStateOf<GeoJsonSource?>(null) }
     var termSource by remember { mutableStateOf<GeoJsonSource?>(null) }
@@ -201,6 +205,7 @@ private fun SpotMap(
         AndroidView(factory = { mapView }) { mv ->
             val spec = styleSpec ?: return@AndroidView // wait until the style decision is made
             mv.getMapAsync { map ->
+                mapRef = map
                 // Persist camera moves so they survive rotation / tab-switch.
                 map.addOnCameraIdleListener {
                     val pos = map.cameraPosition
@@ -289,6 +294,19 @@ private fun SpotMap(
         // Always-visible role legend (color + glyph) so TX/RX/both is readable.
         MapLegend(Modifier.align(Alignment.TopEnd).padding(8.dp))
 
+        // MapLibre's logo and (i) attribution ornaments default to BOTTOM|START, i.e.
+        // directly underneath the full-width StationInfoCard. MapLibreMap.setPadding()
+        // would not help — that is camera padding and does not move the ornaments; the
+        // margins are the only lever, and they are in *pixels*.
+        LaunchedEffect(mapRef, selectedStation != null) {
+            val map = mapRef ?: return@LaunchedEffect
+            val side = with(density) { 8.dp.roundToPx() }
+            val bottom = with(density) { (if (selectedStation != null) 148.dp else 8.dp).roundToPx() }
+            map.uiSettings.setLogoMargins(side, 0, 0, bottom)
+            map.uiSettings.setAttributionMargins(side, 0, 0, bottom)
+            map.uiSettings.setCompassMargins(0, side, side, 0)
+        }
+
         selectedStation?.let { station ->
             StationInfoCard(
                 station = station,
@@ -304,12 +322,22 @@ private fun SpotMap(
         }
     }
 
+    // ~2,400 GeoJSON features were built on the main thread on every refresh. Build them
+    // off it, then hand the FeatureCollection back on Main.
+    // (Deliberately NOT toJson() + setGeoJson(String): MapLibre 11's
+    // setGeoJson(FeatureCollection) already hands off to a background FeatureConverter
+    // with no Gson pass, so the String overload only adds serialisation. And the
+    // mutation itself must stay on Main — Source.checkThread() throws in debuggable
+    // builds only, so an off-thread setGeoJson would pass release and crash debug.)
     LaunchedEffect(spots, pointSource, lineSource, bandColors) {
-        pointSource?.setGeoJson(buildPoints(spots))
-        lineSource?.setGeoJson(buildLines(spots, bandColors))
+        val points = withContext(Dispatchers.Default) { buildPoints(spots) }
+        val lines = withContext(Dispatchers.Default) { buildLines(spots, bandColors) }
+        pointSource?.setGeoJson(points)
+        lineSource?.setGeoJson(lines)
     }
     LaunchedEffect(termSource) {
-        termSource?.setGeoJson(buildTerminator())
+        val term = withContext(Dispatchers.Default) { buildTerminator() }
+        termSource?.setGeoJson(term)
     }
 }
 

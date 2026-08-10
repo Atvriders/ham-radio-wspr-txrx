@@ -77,6 +77,9 @@
     <string name="spots_empty">No spots</string>
     <string name="spots_unavailable">Unavailable: %1$s</string>
     <string name="spots_load_failed_title">Couldn\'t load spots</string>
+    <string name="spots_error_network">No connection to the spot servers. Check your network, then retry.</string>
+    <string name="spots_error_timeout">The spot servers didn\'t respond in time. Retry.</string>
+    <string name="spots_error_generic">Something went wrong loading spots. Retry.</string>
     <string name="action_retry">Retry</string>
     <string name="spots_meta">%1$s · %2$s MHz · %3$s</string>
     <string name="unit_db">%1$d dB</string>
