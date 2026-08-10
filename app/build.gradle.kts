@@ -50,6 +50,13 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Play warns when a bundle ships native code without debug symbols. The only
+            // native code here is MapLibre's prebuilt .so files; SYMBOL_TABLE packages
+            // whatever symbols they retain so native crashes/ANRs are readable in Android
+            // vitals. (Kotlin/Java traces are already covered — AGP bundles mapping.txt.)
+            // SYMBOL_TABLE rather than FULL: function names are enough to triage, and FULL
+            // adds debug info that would bloat the upload for no extra triage value.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
