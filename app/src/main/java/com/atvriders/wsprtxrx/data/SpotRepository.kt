@@ -3,6 +3,7 @@ package com.atvriders.wsprtxrx.data
 import com.atvriders.wsprtxrx.data.local.SpotDao
 import com.atvriders.wsprtxrx.data.local.toEntity
 import com.atvriders.wsprtxrx.data.local.toSpot
+import com.atvriders.wsprtxrx.data.model.Direction
 import com.atvriders.wsprtxrx.data.model.SourceId
 import com.atvriders.wsprtxrx.data.model.Spot
 import com.atvriders.wsprtxrx.data.model.SpotQuery
@@ -51,6 +52,12 @@ class SpotRepository(
         var processed = merged
             .asSequence()
             .map { it.withGeometry() }
+            // Sources differ in what they can filter: wspr.live filters band/distance/power
+            // server-side and RBN filters locally, but PSKReporter's API only understands
+            // time and callsign. Without this pass a band-filtered search silently returned
+            // PSKReporter spots from every band. Filtering here makes the result uniform
+            // whatever the source, and runs after withGeometry() so distance is populated.
+            .filter { it.satisfies(q) }
             .filter { seen.add(it.dedupKey()) }
             .toList()
 
@@ -76,4 +83,33 @@ class SpotRepository(
     /** Returns the most recently cached spots (for offline / cold-start display). */
     suspend fun cached(): List<Spot> =
         runCatching { dao.recent().map { it.toSpot() } }.getOrDefault(emptyList())
+}
+
+/**
+ * True if this spot satisfies the band / distance / power / grid constraints of [q].
+ *
+ * Deliberately does NOT re-check the time window or the callsign: every source already
+ * applies those (wspr.live in SQL, PSKReporter via its query parameters, RBN locally),
+ * and re-deriving "now" here would drop legitimately cached spots.
+ *
+ * A constraint the spot carries no data for (unknown band, missing distance or power) is
+ * treated as "not excluded" — a max-filter cannot be evaluated against an absent value,
+ * and silently dropping such spots would hide real reports.
+ */
+internal fun Spot.satisfies(q: SpotQuery): Boolean {
+    if (q.bands.isNotEmpty() && band !in q.bands) return false
+    q.maxDistanceKm?.let { max -> if ((distanceKm ?: return@let) > max) return false }
+    q.maxPowerDbm?.let { max -> if ((powerDbm ?: return@let) > max) return false }
+    q.cleanGrid?.let { grid ->
+        val prefix = grid.uppercase()
+        val tx = txGrid?.uppercase()?.startsWith(prefix) == true
+        val rx = rxGrid?.uppercase()?.startsWith(prefix) == true
+        val ok = when (q.direction) {
+            Direction.TX -> tx
+            Direction.RX -> rx
+            Direction.BOTH -> tx || rx
+        }
+        if (!ok) return false
+    }
+    return true
 }
