@@ -1,13 +1,15 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    // No kotlin-android plugin — AGP 9's built-in Kotlin compiles the Kotlin sources.
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     // Generates Parcelable implementations for @Parcelize classes. Required by
     // SelectedStation, which is held in rememberSaveable and therefore must be
-    // storable in a Bundle. Ships with KGP, so no version is declared.
-    id("kotlin-parcelize")
+    // storable in a Bundle. Versioned via the catalog now that kotlin-android is gone.
+    alias(libs.plugins.kotlin.parcelize)
 }
 
 /**
@@ -79,9 +81,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // AGP 9 defaults android.onlyEnableUnitTestForTheTestedBuildType to true, so unit
+    // tests exist only for the tested build type. CI runs testReleaseUnitTest (the
+    // WSPR golden-vector gate among them), so make release the tested build type
+    // rather than silently losing the task. There are no androidTest sources, so this
+    // has no other effect.
+    testBuildType = "release"
     buildFeatures {
         compose = true
         buildConfig = true
@@ -123,6 +128,18 @@ if (releaseKeystorePath == null) {
                 )
             }
         }
+}
+
+/**
+ * jvmTarget for the Kotlin compilation. AGP 9 removed `android.kotlinOptions {}`; the
+ * built-in Kotlin support exposes the standard `kotlin { compilerOptions { } }` DSL
+ * instead. It would default to `compileOptions.targetCompatibility` (17) anyway, but
+ * keeping it explicit means a change to one of the two can't silently desync the other.
+ */
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
+    }
 }
 
 // Room schema export location (exportSchema = true on AppDatabase). The generated v2

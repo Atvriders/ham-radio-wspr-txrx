@@ -53,7 +53,10 @@ class AppContainer(context: Context) {
 
     val database: AppDatabase by lazy {
         Room.databaseBuilder(appContext, AppDatabase::class.java, "wspr.db")
-            .fallbackToDestructiveMigration()
+            // Room 2.7 deprecated the no-arg overload; dropAllTables = true is the
+            // documented equivalent of the old behaviour (the cache is disposable —
+            // see AppDatabase — so a destructive rebuild is the intended fallback).
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
 
