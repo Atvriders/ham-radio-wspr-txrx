@@ -30,6 +30,12 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
     <uses-feature android:name="android.hardware.wifi" tools:node="remove" />
 
+    <!-- MapLibre also injects DUMP, a signature|privileged permission that a normal app
+         can never be granted, so removing it cannot change behaviour. Left in, it is
+         listed publicly on the store page in the "read sensitive log data" family — an
+         alarming entry for a permission the app never actually holds. -->
+    <uses-permission android:name="android.permission.DUMP" tools:node="remove" />
+
     <!-- Location permissions imply android.hardware.location as required=true, which
          would drop Android TV and some Chromebook configurations out of the device
          catalogue for no benefit — the grid can always be typed by hand. -->
