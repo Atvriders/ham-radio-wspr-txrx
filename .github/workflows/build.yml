@@ -45,6 +45,21 @@ jobs:
       - name: Assemble release APK (unsigned / debug-signed, no secrets)
         run: ./gradlew assembleRelease --stacktrace
 
+      # H8: the build ran no lint task at any AGP version. lint's abortOnError
+      # default means a genuine error fails the job.
+      - name: Lint (release)
+        run: ./gradlew :app:lintRelease --stacktrace
+
+      - name: Upload lint report (test job)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report-pr
+          path: |
+            app/build/reports/lint-results-release.html
+            app/build/reports/lint-results-release.xml
+          if-no-files-found: warn
+
       # H1: MapLibre merges ACCESS_FINE_LOCATION / ACCESS_WIFI_STATE into the shipped
       # manifest. They are stripped with tools:node="remove"; this proves it stayed
       # stripped in the artifact that actually ships.
@@ -166,6 +181,21 @@ jobs:
       # the APK / AAB that is about to be uploaded.
       - name: Check merged manifest permissions
         run: ./scripts/check-merged-manifest.sh
+
+      # H8: the build ran no lint task at any AGP version. lint's abortOnError
+      # default means a genuine error fails the job.
+      - name: Lint (release)
+        run: ./gradlew :app:lintRelease --stacktrace
+
+      - name: Upload lint report (publish job)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: |
+            app/build/reports/lint-results-release.html
+            app/build/reports/lint-results-release.xml
+          if-no-files-found: warn
 
       - name: Stage artifacts
         run: |
