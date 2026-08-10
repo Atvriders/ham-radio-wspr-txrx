@@ -45,6 +45,12 @@ jobs:
       - name: Assemble release APK (unsigned / debug-signed, no secrets)
         run: ./gradlew assembleRelease --stacktrace
 
+      # H1: MapLibre merges ACCESS_FINE_LOCATION / ACCESS_WIFI_STATE into the shipped
+      # manifest. They are stripped with tools:node="remove"; this proves it stayed
+      # stripped in the artifact that actually ships.
+      - name: Check merged manifest permissions
+        run: ./scripts/check-merged-manifest.sh
+
   # Signed APK + AAB publish for pushes to master and version tags. Opts up to
   # contents: write so the tag job can create a GitHub Release.
   publish:
@@ -111,6 +117,11 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew bundleRelease --stacktrace
+
+      # H1: fail the publish if a denylisted permission survived manifest merging into
+      # the APK / AAB that is about to be uploaded.
+      - name: Check merged manifest permissions
+        run: ./scripts/check-merged-manifest.sh
 
       - name: Stage artifacts
         run: |

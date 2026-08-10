@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Coarse location is sufficient to compute a 4/6-char Maidenhead grid; FINE is
-         not requested to de-risk Play review. Location is used on-device only. -->
+    <!-- Coarse location is sufficient to compute a 4/6-char Maidenhead grid. Location is
+         read on tap, converted to a Maidenhead locator on-device, and never uploaded.
+         FINE is not requested — and, because the MapLibre SDK's own manifest declares it,
+         it is actively stripped below so the shipped bundle matches this claim. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Keeps the time-critical ~110.6 s WSPR transmit alive when backgrounded. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -13,6 +16,23 @@
          once, chained onto the licence acknowledgement; transmitting never depends on
          it, so a denial only costs the shade-level progress indicator. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- org.maplibre.gl:android-sdk merges ACCESS_FINE_LOCATION and ACCESS_WIFI_STATE
+         into the shipped manifest (vestigial Mapbox-telemetry heritage: neither the app
+         nor MapLibre's own code calls WifiManager, and no LocationComponent is used).
+         Left in place they would put "precise location" and "view Wi-Fi connections" on
+         the store listing's permission list, contradicting the coarse-only Data Safety
+         declaration and the privacy policy. A CI step re-checks the merged manifest. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
+    <uses-feature android:name="android.hardware.wifi" tools:node="remove" />
+
+    <!-- Location permissions imply android.hardware.location as required=true, which
+         would drop Android TV and some Chromebook configurations out of the device
+         catalogue for no benefit — the grid can always be typed by hand. -->
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
 
     <application
         android:name=".WsprApp"
