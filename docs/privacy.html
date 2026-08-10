@@ -29,17 +29,18 @@
 <body>
 <header><div class="wrap">
   <h1>Privacy Policy — Ham Radio WSPR TX/RX</h1>
-  <p>Last updated: 22 June 2026</p>
+  <p>Last updated: 9 August 2026</p>
 </div></header>
 <main class="wrap">
   <p>This privacy policy describes how the <strong>Ham Radio WSPR TX/RX</strong> Android app
   (&ldquo;the app&rdquo;, &ldquo;we&rdquo;) handles your information. The app is a tool for amateur
   radio operators to view WSPR (Weak Signal Propagation Reporter) reception reports and to
-  transmit WSPR signals.</p>
+  generate WSPR audio for transmission.</p>
 
   <h2>Summary</h2>
   <ul>
-    <li>The app contains <strong>no advertising and no analytics/tracking SDKs</strong>.</li>
+    <li>The app contains <strong>no advertising and no analytics/tracking SDKs</strong>, and there is
+        <strong>no developer server</strong>: nothing you enter is ever sent to us.</li>
     <li>Your device <strong>location</strong> is used <strong>only on your device</strong> to compute
         your Maidenhead grid locator. It is <strong>never uploaded</strong> by the app.</li>
     <li>Some features send data you enter (callsign, grid, search terms; QRZ credentials) to
@@ -54,7 +55,8 @@
   <code>ACCESS_COARSE_LOCATION</code> permission and reads your last known approximate location to
   fill in your Maidenhead grid square. This computation happens entirely on your device. The app
   does <strong>not</strong> upload, store off-device, or share your raw coordinates. You can decline
-  the permission and type your grid manually. The app does not use background location.</p>
+  the permission and type your grid manually. The app does not use background location and does not
+  request precise location.</p>
 
   <h3>Amateur callsign and grid locator</h3>
   <p>When you transmit, or when you search for spots, the callsign and/or grid you enter are used to
@@ -65,7 +67,10 @@
   <p>If you choose to enter QRZ.com credentials in Settings to look up station details, your QRZ
   <strong>username and password</strong> are stored on your device and are sent to QRZ.com
   (<code>xmldata.qrz.com</code>) over HTTPS to authenticate and perform callsign lookups. If you do
-  not enter QRZ credentials, no data is sent to QRZ.com.</p>
+  not enter QRZ credentials, <strong>the app makes no QRZ.com API requests</strong>. (Separately, the
+  spot detail view offers a <strong>QRZ.com</strong> button that opens <code>qrz.com</code> in your
+  browser for the callsign you are viewing &mdash; see the table below. That works without credentials,
+  and once your browser opens the page, QRZ.com&rsquo;s own privacy policy applies.)</p>
   <blockquote>The QRZ password is encrypted at rest on your device using the Android Keystore and is
   excluded from backups. It is sent to QRZ.com over HTTPS only to authenticate your lookups.</blockquote>
 
@@ -74,15 +79,17 @@
   privacy policy:</p>
   <table>
     <tr><th>Service</th><th>What is sent</th><th>When</th></tr>
-    <tr><td><strong>wspr.live</strong> (db1.wspr.live)</td><td>Search parameters (callsign, grid, band, time range)</td><td>When you search/refresh spots (default source)</td></tr>
-    <tr><td><strong>PSKReporter</strong> (pskreporter.info)</td><td>Search parameters (callsign, grid, band)</td><td>When PSKReporter is enabled as a source</td></tr>
-    <tr><td><strong>Reverse Beacon Network</strong> (telnet.reversebeacon.net)</td><td>A login callsign over a plain (cleartext) telnet connection</td><td>When RBN is enabled as a source</td></tr>
+    <tr><td><strong>wspr.live</strong> (db1.wspr.live)</td><td>Search parameters (callsign, grid, band, time range, distance/power limits)</td><td>When you search/refresh spots (default source)</td></tr>
+    <tr><td><strong>PSKReporter</strong> (retrieve.pskreporter.info)</td><td>A time window, a &ldquo;reception reports only&rdquo; flag, the developer&rsquo;s fixed contact address (required by PSKReporter&rsquo;s operator policy &mdash; it is <strong>not</strong> your address), and the callsign you searched for</td><td>When PSKReporter is enabled as a source</td></tr>
+    <tr><td><strong>Reverse Beacon Network</strong> (telnet.reversebeacon.net)</td><td>The fixed placeholder login callsign <code>N0CALL</code>, over a plain (cleartext) telnet connection</td><td>When RBN is enabled as a source</td></tr>
     <tr><td><strong>QRZ.com</strong> (xmldata.qrz.com)</td><td>Your QRZ username + password; the callsign you look up</td><td>When you have entered QRZ credentials and view station details</td></tr>
+    <tr><td><strong>QRZ.com</strong> (www.qrz.com, in your browser)</td><td>The callsign you are viewing, as part of the URL</td><td>Only when you tap the <strong>QRZ.com</strong> button on a spot detail</td></tr>
     <tr><td><strong>OpenFreeMap</strong> (tiles.openfreemap.org)</td><td>Standard map tile/style requests (includes your IP, as with any web request)</td><td>When you open the Map screen</td></tr>
   </table>
-  <p>The Reverse Beacon Network connection is <strong>cleartext (unencrypted) telnet</strong>. By
-  default the app uses a placeholder login callsign and does not send your personal callsign over
-  this connection.</p>
+  <p>The Reverse Beacon Network connection is <strong>cleartext (unencrypted) telnet</strong> &mdash;
+  that is how the protocol works. The app sends the constant <code>N0CALL</code> as the login and
+  <strong>never</strong> your own callsign, credentials or location over it. There is no setting that
+  changes this.</p>
 
   <h2>Data stored on your device</h2>
   <ul>
@@ -93,6 +100,43 @@
   <p>This on-device data is excluded from Android cloud Auto Backup and device-to-device transfer.
   Uninstalling the app removes all of it. You can also clear it via Android Settings &rarr; Apps &rarr;
   Storage &rarr; Clear storage.</p>
+
+  <h2>Security</h2>
+  <ul>
+    <li><strong>In transit</strong> &mdash; all web requests use HTTPS/TLS, and cleartext HTTP is
+        disabled for every domain at the operating-system level, so the app cannot silently fall back
+        to an unencrypted connection. The single exception is the optional Reverse Beacon Network
+        telnet feed, which is unencrypted by protocol design and carries only the fixed placeholder
+        callsign <code>N0CALL</code> &mdash; never your callsign, credentials or location.</li>
+    <li><strong>At rest</strong> &mdash; your QRZ password is encrypted with AES-256-GCM using a
+        non-exportable key held in the Android Keystore, with a fresh initialisation vector per
+        encryption. If encryption is unavailable for any reason, the password is
+        <strong>discarded rather than written in plaintext</strong>.</li>
+    <li><strong>Backups and transfers</strong> &mdash; the settings store and the spot cache are
+        excluded from Android Auto Backup and from device-to-device transfer, so neither leaves your
+        device.</li>
+    <li><strong>No servers, no third-party SDKs</strong> &mdash; the app has no backend of its own,
+        and ships no advertising, analytics, crash-reporting or tracking SDKs. The developer never
+        receives your data.</li>
+    <li><strong>Location</strong> &mdash; read only when you tap GPS, converted to a Maidenhead grid
+        on-device, and never transmitted or stored off-device.</li>
+    <li><strong>Least privilege</strong> &mdash; the app requests only internet, network state, coarse
+        location, notification, foreground-service and wake-lock permissions. Precise location and
+        Wi-Fi state are explicitly removed from the shipped app, and a build-time check fails the
+        release if either ever reappears.</li>
+  </ul>
+
+  <h2>Data retention</h2>
+  <ul>
+    <li><strong>Cached spots</strong> are pruned automatically after <strong>7 days</strong>.</li>
+    <li><strong>Settings, recent callsigns (the 20 most recent) and QRZ credentials</strong> are
+        retained for as long as the app is installed &mdash; there is no automatic expiry. Clear them
+        at any time as described under &ldquo;Data deletion&rdquo;.</li>
+    <li><strong>The developer holds no copies of anything</strong>, because there is no developer
+        server.</li>
+    <li><strong>Third parties</strong> (wspr.live, PSKReporter, the Reverse Beacon Network, QRZ.com,
+        OpenFreeMap) retain data under <strong>their own</strong> policies; see their websites.</li>
+  </ul>
 
   <h2>Data deletion</h2>
   <ul>

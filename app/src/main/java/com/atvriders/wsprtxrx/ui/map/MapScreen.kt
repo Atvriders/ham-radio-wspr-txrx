@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -80,6 +82,16 @@ private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 private const val SRC_POINTS = "spot-points"
 private const val SRC_LINES = "spot-lines"
 private const val SRC_TERM = "terminator"
+private const val OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright"
+
+/**
+ * ODbL requires visible attribution for OpenStreetMap data. MapLibre does render its own
+ * credit from the style's TileJSON, but it defaults to BOTTOM|START — under the
+ * full-width station card — behind an unlabelled (i) button. This constant is also
+ * injected into the style source below so the credit survives an upstream regression.
+ */
+private const val OSM_ATTRIBUTION_HTML =
+    "<a href=\"https://www.openstreetmap.org/copyright\">&copy; OpenStreetMap contributors</a>"
 
 /**
  * A station picked by tapping its marker, surfaced in the info popup.
@@ -307,6 +319,14 @@ private fun SpotMap(
             map.uiSettings.setCompassMargins(0, side, side, 0)
         }
 
+        // Persistent, labelled OSM credit. Lifted clear of the station card, which is
+        // pinned full-width to the bottom of this same Box.
+        OsmAttributionChip(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 8.dp, bottom = if (selectedStation != null) 148.dp else 8.dp),
+        )
+
         selectedStation?.let { station ->
             StationInfoCard(
                 station = station,
@@ -338,6 +358,31 @@ private fun SpotMap(
     LaunchedEffect(termSource) {
         val term = withContext(Dispatchers.Default) { buildTerminator() }
         termSource?.setGeoJson(term)
+    }
+}
+
+/** Always-visible OpenStreetMap credit, linking to the ODbL copyright page. */
+@Composable
+private fun OsmAttributionChip(modifier: Modifier = Modifier) {
+    val uriHandler = LocalUriHandler.current
+    val label = stringResource(R.string.map_osm_credit)
+    val description = stringResource(R.string.map_osm_credit_desc)
+    Surface(
+        modifier = modifier
+            // runCatching: AndroidUriHandler.openUri throws when no browser can handle
+            // the intent, and an attribution chip must never be a crash path.
+            .clickable { runCatching { uriHandler.openUri(OSM_COPYRIGHT_URL) } }
+            .semantics { contentDescription = description },
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.small,
+        tonalElevation = 2.dp,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }
 
@@ -521,6 +566,17 @@ private suspend fun globeStyleJson(): String? = withContext(Dispatchers.IO) {
         val text = conn.inputStream.bufferedReader().use { it.readText() }
         val obj = org.json.JSONObject(text)
         obj.put("projection", org.json.JSONObject().put("type", "globe"))
+        // Guarantee the ODbL credit even if the upstream TileJSON ever drops it.
+        runCatching {
+            obj.optJSONObject("sources")?.let { sources ->
+                for (key in sources.keys()) {
+                    val src = sources.optJSONObject(key) ?: continue
+                    if (src.optString("attribution").isBlank()) {
+                        src.put("attribution", OSM_ATTRIBUTION_HTML)
+                    }
+                }
+            }
+        }
         obj.toString()
     }.getOrNull()
 }

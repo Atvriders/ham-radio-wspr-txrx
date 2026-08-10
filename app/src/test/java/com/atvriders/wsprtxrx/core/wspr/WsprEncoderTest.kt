@@ -7,8 +7,10 @@ import org.junit.Test
 
 class WsprEncoderTest {
 
-    // Golden 162-symbol output for "K1ABC FN42 37", validated bit-exactly against the
-    // WSJT-X encoder (and the published source-encoded bytes F7 0C 23 8B 0D 19 40).
+    // Golden 162-symbol output for "K1ABC FN42 37". WSJT-X is used here purely as a test
+    // ORACLE — its output for this message is the reference these symbols were checked
+    // against, bit for bit, alongside the published source-encoded bytes
+    // F7 0C 23 8B 0D 19 40. No WSJT-X code is used in the implementation.
     private val k1abcFn42_37 = intArrayOf(
         3, 3, 0, 0, 2, 0, 0, 0, 1, 0, 2, 0, 1, 3, 1, 2, 2, 2, 1, 0,
         0, 3, 2, 3, 1, 3, 3, 2, 2, 0, 2, 0, 0, 0, 3, 2, 0, 1, 2, 3,

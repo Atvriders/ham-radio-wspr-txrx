@@ -5,9 +5,11 @@ package com.atvriders.wsprtxrx.core.wspr
  * for transmission, given a callsign, 4-character grid locator, and power in dBm.
  *
  * Pipeline: [WsprMessage.sourceBytes] -> rate-1/2, K=32 convolutional code
- * (Layland-Lushbaugh polynomials, MSB-first, POLY1 parity before POLY2) -> 8-bit
- * bit-reversal interleave -> combine with [WsprSync]. Validated bit-exactly against
- * the WSJT-X encoder for "K1ABC FN42 37".
+ * (Layland-Lushbaugh polynomials, a 1971 JPL code; MSB-first, POLY1 parity before POLY2)
+ * -> 8-bit bit-reversal interleave -> combine with [WsprSync].
+ *
+ * Every constant is taken from Andy Talbot G4JNT's published protocol description "The
+ * WSPR Coding Process" (2009); see [WsprEncoderTest] for the golden-vector check.
  */
 object WsprEncoder {
     private val POLY1 = 0xF2D05351.toInt()

@@ -315,7 +315,7 @@
 
 ### Task 6.1: Manifest, permissions, icon, README
 
-**Files:** `AndroidManifest.xml` (INTERNET, ACCESS_FINE_LOCATION, RECORD_AUDIO? no — playback only; FOREGROUND_SERVICE if needed), adaptive launcher icon, `README.md` finalize.
+**Files:** `AndroidManifest.xml` (INTERNET, ~~ACCESS_FINE_LOCATION~~ **ACCESS_COARSE_LOCATION only** — see `docs/PLAY-STANDARDS-AUDIT.md` H1; FINE is actively stripped from the merged manifest and a CI guard enforces it. RECORD_AUDIO? no — playback only; FOREGROUND_SERVICE if needed), adaptive launcher icon, `README.md` finalize.
 - [ ] Build green; commit `chore: permissions + icon + readme`.
 
 ### Task 6.2: Release signing path + tag

@@ -5,7 +5,8 @@ package com.atvriders.wsprtxrx.core.wspr
  * 4-character grid locator and power in dBm (22 bits) = 50 bits, laid out into the
  * first 7 of 11 bytes (the remaining bytes are the convolutional-encoder zero tail).
  *
- * Constants and layout follow the WSJT-X reference (wsprsim_utils.c). Verified against
+ * The source-coding formulas and byte layout are published in Andy Talbot G4JNT's "The
+ * WSPR Coding Process" (2009), which is the derivation source used here. Verified against
  * the published WSPRcode vectors: "K1ABC FN42 37" -> F7 0C 23 8B 0D 19 40 and
  * "KO7M CN87 20" -> 8B CC 46 9D 56 B5 00.
  */

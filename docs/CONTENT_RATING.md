@@ -27,3 +27,35 @@ Recommended answers for this app (a ham-radio utility with no objectionable cont
 > contains no objectionable content, so it does not affect the rating. The licensing
 > responsibility is covered by the in-app disclaimer and the store description — it is not a
 > content-rating factor.
+
+---
+
+# Target audience and content
+
+**This is a separate mandatory declaration** (Play Console → App content → Target audience
+and content), not part of the content rating, and **App content cannot be marked complete
+without it**.
+
+| Question | Answer |
+|---|---|
+| Target age group(s) | **Ages 18 and over only** — do **not** tick 13–15 |
+| Does your store listing unintentionally appeal to children? | **No** |
+| Teacher Approved / Designed for Families | **Do not opt in** |
+| Restrict minor access | Leave off (that control is for gambling/dating-class apps) |
+
+**Rationale, to keep on file.** The only interactive output is an RF transmit aid behind a
+one-time amateur-licence acknowledgement dialog; the listing addresses licensed operators
+and carries a licensing disclaimer; the icon and feature graphic are a dark technical
+wireframe globe with no cartoon or child-directed styling. Ticking any group **12 and
+under** (and, in some locales, 13–15) pulls the app under the Families Policy
+Requirements and adds child-directed scrutiny of `ACCESS_COARSE_LOCATION` for zero
+benefit.
+
+Target audience declares who the app is *designed and marketed for*, not who may legally
+use it — minors who hold amateur licences can still install it. A content rating of
+**Everyone** alongside a target audience of **18+** is a normal combination for a
+technical utility.
+
+**Google requires these to be completed first**, in this order: Ads = **No** →
+**App access** (see `docs/APP_ACCESS.md`) → **Privacy policy URL** → Content rating →
+Target audience.

@@ -77,7 +77,10 @@ fun SpotDetail(
                 Text(stringResource(R.string.detail_search_call, spot.txCall))
             }
             OutlinedButton(onClick = {
-                uriHandler.openUri("https://www.qrz.com/db/${spot.txCall}")
+                // runCatching: AndroidUriHandler.openUri throws IllegalArgumentException
+                // when no activity can handle the intent (browserless device / locked-down
+                // profile), which would otherwise crash the app from a detail card.
+                runCatching { uriHandler.openUri("https://www.qrz.com/db/${spot.txCall}") }
             }) { Text(stringResource(R.string.detail_qrz_com)) }
         }
     }

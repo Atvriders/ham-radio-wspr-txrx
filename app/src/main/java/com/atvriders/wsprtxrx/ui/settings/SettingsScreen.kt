@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -43,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.atvriders.wsprtxrx.BuildConfig
 import com.atvriders.wsprtxrx.R
 import com.atvriders.wsprtxrx.core.Band
 import com.atvriders.wsprtxrx.data.model.SourceId
@@ -130,6 +136,79 @@ fun SettingsScreen(vm: SettingsViewModel) {
                 }
             }
         }
+
+        HorizontalDivider()
+        AboutSection()
+    }
+}
+
+/**
+ * B5: Play's User Data policy requires a privacy-policy link **or text** inside the app
+ * itself, not only in the Console — and a reviewer checks it by opening Settings. This
+ * section also carries the OpenStreetMap credit (ODbL requires visible attribution) and
+ * the redistributed open-source notices (BSD-2 and Apache-2.0 both condition binary
+ * redistribution on reproducing them).
+ */
+@Composable
+private fun AboutSection() {
+    val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val privacyUrl = stringResource(R.string.privacy_policy_url)
+    var showLicences by remember { mutableStateOf(false) }
+
+    Section(stringResource(R.string.about_title))
+    Text(
+        stringResource(R.string.about_privacy_summary),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    // Selectable text, so the "link OR text" requirement is satisfied even on a device
+    // with no browser to hand the intent to.
+    SelectionContainer { Text(privacyUrl, style = MaterialTheme.typography.bodySmall) }
+    TextButton(onClick = {
+        // AndroidUriHandler.openUri throws IllegalArgumentException when no activity can
+        // handle the intent; without this, a browserless test device turns a paperwork
+        // item into a crash.
+        runCatching { uriHandler.openUri(privacyUrl) }
+    }) { Text(stringResource(R.string.about_open_privacy)) }
+
+    Text(
+        stringResource(R.string.about_map_credit),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    TextButton(onClick = { showLicences = true }) {
+        Text(stringResource(R.string.about_open_source_licences))
+    }
+    Text(
+        stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    if (showLicences) {
+        val notices = remember {
+            runCatching {
+                context.resources.openRawResource(R.raw.third_party_licences)
+                    .bufferedReader().use { it.readText() }
+            }.getOrDefault("")
+        }
+        AlertDialog(
+            onDismissRequest = { showLicences = false },
+            title = { Text(stringResource(R.string.about_open_source_licences)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    SelectionContainer {
+                        Text(notices, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLicences = false }) {
+                    Text(stringResource(R.string.action_close))
+                }
+            },
+        )
     }
 }
 
