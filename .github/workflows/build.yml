@@ -42,6 +42,15 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testReleaseUnitTest --stacktrace
 
+      # TEMPORARY (not for merge): list every executed unit test class + counts.
+      - name: Unit test report
+        run: |
+          ./gradlew testReleaseUnitTest --rerun-tasks --stacktrace
+          for f in app/build/test-results/testReleaseUnitTest/*.xml; do
+            head -3 "$f" | tr -d '\n' | sed 's/.*<testsuite //; s/ timestamp=.*//'
+            echo
+          done
+
       - name: Assemble release APK (unsigned / debug-signed, no secrets)
         run: ./gradlew assembleRelease --stacktrace
 
