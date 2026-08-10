@@ -1,0 +1,146 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "3f798449304003ba25fd6daea1a0619b",
+    "entities": [
+      {
+        "tableName": "spots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `txCall` TEXT NOT NULL, `txGrid` TEXT, `rxCall` TEXT NOT NULL, `rxGrid` TEXT, `freqHz` INTEGER NOT NULL, `snr` INTEGER NOT NULL, `drift` INTEGER NOT NULL, `powerDbm` INTEGER, `timeUtc` INTEGER NOT NULL, `source` TEXT NOT NULL, `mode` TEXT NOT NULL, `txLat` REAL, `txLon` REAL, `rxLat` REAL, `rxLon` REAL, `distanceKm` REAL, `azimuthDeg` REAL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "txCall",
+            "columnName": "txCall",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "txGrid",
+            "columnName": "txGrid",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rxCall",
+            "columnName": "rxCall",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rxGrid",
+            "columnName": "rxGrid",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "freqHz",
+            "columnName": "freqHz",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "snr",
+            "columnName": "snr",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "drift",
+            "columnName": "drift",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "powerDbm",
+            "columnName": "powerDbm",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "timeUtc",
+            "columnName": "timeUtc",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mode",
+            "columnName": "mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "txLat",
+            "columnName": "txLat",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "txLon",
+            "columnName": "txLon",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rxLat",
+            "columnName": "rxLat",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rxLon",
+            "columnName": "rxLon",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "distanceKm",
+            "columnName": "distanceKm",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "azimuthDeg",
+            "columnName": "azimuthDeg",
+            "affinity": "REAL",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_spots_timeUtc",
+            "unique": false,
+            "columnNames": [
+              "timeUtc"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_spots_timeUtc` ON `${TABLE_NAME}` (`timeUtc`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3f798449304003ba25fd6daea1a0619b')"
+    ]
+  }
+}

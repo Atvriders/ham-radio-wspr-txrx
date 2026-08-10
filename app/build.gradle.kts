@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    // Generates Parcelable implementations for @Parcelize classes. Required by
+    // SelectedStation, which is held in rememberSaveable and therefore must be
+    // storable in a Bundle. Ships with KGP, so no version is declared.
+    id("kotlin-parcelize")
 }
 
 android {

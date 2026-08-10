@@ -3,8 +3,11 @@ package com.atvriders.wsprtxrx.ui.tx
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,16 +41,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.atvriders.wsprtxrx.R
 import com.atvriders.wsprtxrx.core.wspr.WsprMessage
 import com.atvriders.wsprtxrx.ui.Format
 import com.atvriders.wsprtxrx.ui.TxPhase
 import com.atvriders.wsprtxrx.ui.TxViewModel
+
+/**
+ * Process-scoped one-shot guard so the POST_NOTIFICATIONS request is made at most once
+ * per launch, however the user reaches the TX screen. Deliberately not persisted: the
+ * platform itself stops showing the dialog after the user has declined twice.
+ */
+@Volatile
+private var notificationAskDone = false
 
 @Composable
 fun TxScreen(
@@ -71,7 +87,53 @@ fun TxScreen(
         if (granted) lastLocation(context)?.let { vm.fillGridFromLocation(it.first, it.second) }
     }
 
-    // B4: show a one-time in-context rationale before the system location dialog.
+    // --- B4: POST_NOTIFICATIONS (Android 13+) -------------------------------------
+    // The ongoing transmit notification is invisible in the shade without this grant.
+    // It is asked for ONCE, chained onto the licence acknowledgement (and, for installs
+    // that already acknowledged, on first entry to this screen) — never in front of the
+    // time-critical Transmit tap. startForeground() does not need it, so a denial only
+    // costs the shade indicator: transmitting always still works.
+    var notificationsEnabled by remember { mutableStateOf(true) }
+    val refreshNotificationState = {
+        notificationsEnabled = runCatching {
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
+        }.getOrDefault(true)
+    }
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { refreshNotificationState() }
+    val askForNotifications = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        // Below API 33 (and once granted) there is nothing to ask for.
+        Unit
+    }
+
+    // Re-read the channel/app-level state whenever the screen comes back to the
+    // foreground, so returning from system notification settings updates the note.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshNotificationState()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Upgrade path: the licence gate already fired on a previous version, so chain the
+    // one-time ask to the first visit of this screen instead. Once per process.
+    LaunchedEffect(licenceAcknowledged) {
+        if (licenceAcknowledged && !notificationAskDone) {
+            notificationAskDone = true
+            askForNotifications()
+        }
+    }
+
+    // Show a one-time in-context rationale before the system location dialog.
     var showLocationRationale by remember { mutableStateOf(false) }
     if (showLocationRationale) {
         AlertDialog(
@@ -103,6 +165,10 @@ fun TxScreen(
                 TextButton(onClick = {
                     showLicenceGate = false
                     onAcknowledgeLicence()
+                    // Ask for POST_NOTIFICATIONS here, not at the Transmit tap. The
+                    // request is fire-and-forget; transmit starts regardless.
+                    notificationAskDone = true
+                    askForNotifications()
                     vm.transmit()
                 }) { Text(stringResource(R.string.tx_licence_agree)) }
             },
@@ -183,6 +249,21 @@ fun TxScreen(
         }
         ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
+        // Non-blocking note when the shade indicator is unavailable (permission denied
+        // or the channel switched off). Transmitting is unaffected.
+        if (!notificationsEnabled) {
+            Column {
+                Text(
+                    stringResource(R.string.tx_notifications_off),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = { openNotificationSettings(context) }) {
+                    Text(stringResource(R.string.tx_notifications_settings))
+                }
+            }
+        }
+
         if (ui.phase == TxPhase.WAITING || ui.phase == TxPhase.TRANSMITTING) {
             Button(onClick = vm::stop, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.tx_stop))
@@ -214,6 +295,28 @@ private fun PowerPicker(power: Int, onSelect: (Int) -> Unit) {
                     onClick = { onSelect(p); expanded = false },
                 )
             }
+        }
+    }
+}
+
+/**
+ * Opens this app's notification settings. Wrapped in [runCatching] because a device with
+ * no activity for the action (or a locked-down profile) would otherwise throw
+ * `ActivityNotFoundException` and turn a paperwork note into a crash.
+ */
+private fun openNotificationSettings(context: Context) {
+    runCatching {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    }.onFailure {
+        runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(android.net.Uri.fromParts("package", context.packageName, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
         }
     }
 }

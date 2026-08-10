@@ -25,6 +25,8 @@
     <string name="tx_complete">Transmission complete.</string>
     <string name="tx_stop">Stop</string>
     <string name="tx_transmit">Transmit</string>
+    <string name="tx_notifications_off">Notifications are off, so the transmit progress won\'t appear in the status bar. Transmitting still works.</string>
+    <string name="tx_notifications_settings">Notification settings</string>
     <string name="tx_location_title">Use your location?</string>
     <string name="tx_location_body">Location is used only to compute your Maidenhead grid on-device; it is never uploaded.</string>
 

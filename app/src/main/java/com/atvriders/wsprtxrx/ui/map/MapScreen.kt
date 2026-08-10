@@ -1,6 +1,7 @@
 package com.atvriders.wsprtxrx.ui.map
 
 import android.graphics.PointF
+import android.os.Parcelable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,6 +67,7 @@ import org.maplibre.geojson.LineString
 import org.maplibre.geojson.MultiLineString
 import org.maplibre.geojson.Point
 import com.atvriders.wsprtxrx.core.SolarTerminator
+import kotlinx.parcelize.Parcelize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
@@ -77,8 +79,17 @@ private const val SRC_POINTS = "spot-points"
 private const val SRC_LINES = "spot-lines"
 private const val SRC_TERM = "terminator"
 
-/** A station picked by tapping its marker, surfaced in the info popup. Saveable across
- *  rotation/tab-switch via [rememberSaveable] (all fields are primitives/nullable). */
+/**
+ * A station picked by tapping its marker, surfaced in the info popup.
+ *
+ * Held in [rememberSaveable], so the **container class itself** must be storable in a
+ * Bundle — `Compose`'s `SaveableStateRegistry` throws `IllegalStateException` from
+ * `performSave()` for anything outside `{Parcelable, Serializable, String, SparseArray,
+ * Binder, Size, SizeF}`. Having primitive *fields* is irrelevant; the class is what gets
+ * checked. Hence `@Parcelize`/`Parcelable` — without it, tapping a marker and then
+ * rotating or pressing Home force-closes the app.
+ */
+@Parcelize
 data class SelectedStation(
     val call: String,
     /** Stable role key: "both" / "tx" / "rx" (localized at display time). */
@@ -87,7 +98,7 @@ data class SelectedStation(
     val lat: Double,
     val lon: Double,
     val grid: String?,
-)
+) : Parcelable
 
 /**
  * Process-wide cache of the resolved globe style JSON so it isn't refetched on every Map

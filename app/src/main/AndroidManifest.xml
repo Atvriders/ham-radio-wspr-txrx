@@ -9,6 +9,10 @@
     <!-- Keeps the time-critical ~110.6 s WSPR transmit alive when backgrounded. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Android 13+ runtime permission for the ongoing transmit notification. Requested
+         once, chained onto the licence acknowledgement; transmitting never depends on
+         it, so a denial only costs the shade-level progress indicator. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".WsprApp"

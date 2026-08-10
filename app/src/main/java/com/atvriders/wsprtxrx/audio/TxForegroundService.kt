@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.atvriders.wsprtxrx.R
 
 /**
@@ -27,17 +28,39 @@ class TxForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureChannel(this)
-        val notification = buildNotification(this)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
+        // Promotion to foreground can legitimately fail: the FGS allowance may have been
+        // revoked between startForegroundService() and here (user pressed Home/power in
+        // that window), the app may be in the Restricted battery bucket, or an OEM
+        // framework may only enforce at promotion time. `startForeground` then throws
+        // ForegroundServiceStartNotAllowedException / SecurityException, which is
+        // uncatchable from the caller side, so it has to be handled in the callback.
+        val promoted = runCatching {
+            ServiceCompat.startForeground(
+                this,
                 NOTIFICATION_ID,
-                notification,
+                buildNotification(this),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
             )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        }.isSuccess
+        if (!promoted) {
+            // stopSelf() is mandatory, not optional: a service started via
+            // startForegroundService() that never reaches foreground state is killed
+            // with ForegroundServiceDidNotStartInTimeException after ~5 s. Bailing out
+            // here trades a crash for a silent no-op; the ViewModel keeps playing.
+            stopSelf()
+            return START_NOT_STICKY
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * The transmit audio is owned by the ViewModel in the app process, so a task swipe
+     * already cancels it. Drop the (now orphaned) notification rather than leaving an
+     * ongoing indicator for a transmission that no longer exists.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
