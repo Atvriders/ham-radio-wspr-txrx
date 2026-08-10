@@ -66,6 +66,25 @@ jobs:
       - name: Check merged manifest permissions
         run: ./scripts/check-merged-manifest.sh
 
+      # TEMPORARY (not for merge): prove the B6 bundleRelease guard still fires under
+      # AGP 9. This job has no keystore, so bundleRelease must fail with the guard's
+      # message rather than producing a debug-signed AAB.
+      - name: B6 guard must refuse a debug-signed bundle
+        run: |
+          if ./gradlew bundleRelease --stacktrace > /tmp/guard.log 2>&1; then
+            echo "::error::bundleRelease SUCCEEDED without KEYSTORE_FILE - the B6 guard did not fire."
+            tail -40 /tmp/guard.log
+            exit 1
+          fi
+          if grep -q "Refusing to build a debug-signed Play bundle" /tmp/guard.log; then
+            echo "B6 guard fired as expected:"
+            grep -A3 "Refusing to build a debug-signed Play bundle" /tmp/guard.log | head -10
+          else
+            echo "::error::bundleRelease failed, but not because of the B6 guard."
+            tail -60 /tmp/guard.log
+            exit 1
+          fi
+
   # Signed APK + AAB publish for pushes to master and version tags. Opts up to
   # contents: write so the tag job can create a GitHub Release.
   publish:
