@@ -33,6 +33,17 @@ class AppContainer(context: Context) {
     var settingsSnapshot: AppSettings = AppSettings()
         private set
 
+    /**
+     * Process-scoped bridge from the transmit notification's **Stop** action to the
+     * ViewModel that actually owns the audio.
+     *
+     * Registered by [com.atvriders.wsprtxrx.ui.WsprViewModelFactory]. Without it, Stop
+     * could only `stopSelf()` the foreground service — killing the notification while
+     * the tone kept playing, which is strictly worse than having no Stop action.
+     */
+    @Volatile
+    var onTxStopRequested: (() -> Unit)? = null
+
     val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)

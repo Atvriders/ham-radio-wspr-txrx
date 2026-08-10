@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Status-bar icon for the WSPR transmit foreground service.
+
+  App-owned on purpose: framework drawables (android.R.drawable.*) are not a stable
+  status-bar-icon API across OEM skins. Notification small icons must be a flat
+  white-on-transparent silhouette — the system applies its own tint and ignores colour.
+
+  Glyph: a centre dot with two pairs of radiating arcs (signal being emitted).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Centre dot (the transmitter). -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10.25,12 A1.75,1.75 0 1,1 13.75,12 A1.75,1.75 0 1,1 10.25,12 Z" />
+
+    <!-- Inner wavefront. -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M8.39,8.39 A5.1,5.1 0 0,0 8.39,15.61" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M15.61,8.39 A5.1,5.1 0 0,1 15.61,15.61" />
+
+    <!-- Outer wavefront. -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M5.64,5.64 A9,9 0 0,0 5.64,18.36" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M18.36,5.64 A9,9 0 0,1 18.36,18.36" />
+</vector>

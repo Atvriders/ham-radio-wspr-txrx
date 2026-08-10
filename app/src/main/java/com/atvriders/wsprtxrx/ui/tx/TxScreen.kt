@@ -55,6 +55,7 @@ import com.atvriders.wsprtxrx.core.wspr.WsprMessage
 import com.atvriders.wsprtxrx.ui.Format
 import com.atvriders.wsprtxrx.ui.TxPhase
 import com.atvriders.wsprtxrx.ui.TxViewModel
+import com.atvriders.wsprtxrx.ui.TxWarning
 
 /**
  * Process-scoped one-shot guard so the POST_NOTIFICATIONS request is made at most once
@@ -248,6 +249,12 @@ fun TxScreen(
             TxPhase.IDLE -> {}
         }
         ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        ui.warning?.let { w ->
+            val text = when (w) {
+                TxWarning.KEEP_ALIVE_UNAVAILABLE -> stringResource(R.string.tx_warning_no_keepalive)
+            }
+            Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+        }
 
         // Non-blocking note when the shade indicator is unavailable (permission denied
         // or the channel switched off). Transmitting is unaffected.

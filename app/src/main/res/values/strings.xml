@@ -38,8 +38,14 @@
 
     <!-- TX foreground service notification -->
     <string name="tx_notification_channel">WSPR transmit</string>
+    <string name="tx_notification_channel_desc">Shows progress while a WSPR tone is being generated, and lets you stop it early.</string>
     <string name="tx_notification_title">Transmitting WSPR</string>
-    <string name="tx_notification_text">Keeping the transmission alive — do not close the app.</string>
+    <string name="tx_notification_text">Transmitting for 110.6 s — tap Stop to end early.</string>
+    <string name="tx_notification_text_waiting">Waiting for the next even UTC minute…</string>
+    <string name="tx_notification_stop">Stop</string>
+
+    <!-- TX errors / warnings -->
+    <string name="tx_warning_no_keepalive">Background transmit protection unavailable — keep this screen open.</string>
 
     <!-- Query controls / filters -->
     <string name="query_search_hint">Callsign or grid</string>
