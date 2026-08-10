@@ -93,29 +93,19 @@ class SpotsViewModel(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _ui.value = _ui.value.copy(loading = true, error = null)
-            try {
-                val r = repository.search(_query.value)
-                // The sources do blocking OkHttp inside withContext(Dispatchers.IO), and
-                // cancel() cannot interrupt execute(). Without this check a cancelled
-                // search unwinds *after* the search that replaced it has already
-                // written its results, clobbering them.
-                ensureActive()
-                _ui.value = _ui.value.copy(
-                    loading = false,
-                    spots = sortSpots(r.spots, _ui.value.sort),
-                    failures = r.partialFailures,
-                    // Was never reset on success, so any stale banner outlived its cause.
-                    error = null,
-                )
-            } catch (e: CancellationException) {
-                // MUST come first and MUST rethrow. runCatching used to swallow this,
-                // and because onFailure is non-suspending it ran anyway — painting a
-                // permanent "Couldn't load spots / StandaloneCoroutine was cancelled"
-                // banner over perfectly good data on every rapid re-search.
-                throw e
-            } catch (e: Exception) {
-                _ui.value = _ui.value.copy(loading = false, error = classify(e))
-            }
+            // TEMPORARY: pre-fix behaviour, restored only to prove the regression
+            // test fails against it. Reverted immediately.
+            runCatching { repository.search(_query.value) }
+                .onSuccess { r ->
+                    _ui.value = _ui.value.copy(
+                        loading = false,
+                        spots = sortSpots(r.spots, _ui.value.sort),
+                        failures = r.partialFailures,
+                    )
+                }
+                .onFailure { e ->
+                    _ui.value = _ui.value.copy(loading = false, error = classify(e))
+                }
         }
     }
 
