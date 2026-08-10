@@ -1,24 +1,40 @@
 package com.atvriders.wsprtxrx.data.prefs
 
 import android.content.Context
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.atvriders.wsprtxrx.data.model.SourceId
 import com.atvriders.wsprtxrx.ui.theme.ThemeMode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import java.io.IOException
 
-private val Context.dataStore by preferencesDataStore(name = "wspr_settings")
+/**
+ * A corrupt preferences file used to be a crash loop on every launch with no recovery
+ * short of clearing app data: the flow was collected unprotected in three places. The
+ * corruption handler covers `CorruptionException` (bad file) and the `.catch` on
+ * [SettingsStore.safeData] covers the rest of the IO surface — both are needed, because
+ * the handler alone leaves ordinary IO errors unhandled and the catch alone would leave
+ * the bad file in place forever.
+ */
+private val Context.dataStore by preferencesDataStore(
+    name = "wspr_settings",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 /** User-facing settings backed by Preferences DataStore. */
 data class AppSettings(
@@ -50,7 +66,11 @@ class SettingsStore(
     private val crypto: SecretCrypto = SecretCrypto.NONE,
 ) : SpotsSettings {
 
-    override val settings: Flow<AppSettings> = context.dataStore.data.map { it.toSettings() }
+    /** The only read path: corruption- and IO-guarded. Never collect `dataStore.data` directly. */
+    private val safeData: Flow<Preferences> = context.dataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+
+    override val settings: Flow<AppSettings> = safeData.map { it.toSettings() }
 
     suspend fun setEnabledSources(sources: Set<SourceId>) = edit {
         it[Keys.SOURCES] = sources.map(SourceId::name).toSet()
@@ -81,8 +101,12 @@ class SettingsStore(
 
     suspend fun setThemeMode(mode: ThemeMode) = edit { it[Keys.THEME] = mode.name }
 
-    /** Persists the one-time amateur-licence acknowledgement required before first TX. */
-    suspend fun setLicenceAcknowledged(ack: Boolean) = edit { it[Keys.LICENCE_ACK] = ack }
+    /**
+     * Persists the one-time amateur-licence acknowledgement required before first TX.
+     * Returns false if the write failed, so the TX gate is never shown as accepted when
+     * it was not actually persisted.
+     */
+    suspend fun setLicenceAcknowledged(ack: Boolean): Boolean = edit { it[Keys.LICENCE_ACK] = ack }
 
     suspend fun setRecentCalls(calls: List<String>) = edit {
         it[Keys.RECENT_CALLS] = json.encodeToString(ListSerializer(String.serializer()), calls)
@@ -124,7 +148,7 @@ class SettingsStore(
      */
     suspend fun migratePlaintextQrz() {
         runCatching {
-            val prefs = context.dataStore.data.first()
+            val prefs = safeData.first()
             val legacy = prefs[Keys.QRZ_PASS] ?: return
             // Re-encrypt under the Keystore key, then drop the plaintext.
             val enc = if (legacy.isEmpty()) "" else crypto.encrypt(legacy)
@@ -135,11 +159,21 @@ class SettingsStore(
         }
     }
 
-    private suspend fun settingsSnapshot(): AppSettings =
-        context.dataStore.data.first().toSettings()
+    private suspend fun settingsSnapshot(): AppSettings = safeData.first().toSettings()
 
-    private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
+    /**
+     * The single write path for all setters. Returns false instead of throwing so a
+     * disk-full or IO error cannot take the app down from any of them.
+     */
+    private suspend fun edit(
+        block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit,
+    ): Boolean = try {
         context.dataStore.edit(block)
+        true
+    } catch (e: CancellationException) {
+        throw e // never swallow cancellation in a suspend function
+    } catch (_: Exception) {
+        false
     }
 
     private fun Preferences.toSettings(): AppSettings = AppSettings(

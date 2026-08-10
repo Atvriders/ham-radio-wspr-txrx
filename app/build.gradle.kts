@@ -10,6 +10,13 @@ plugins {
     id("kotlin-parcelize")
 }
 
+/**
+ * Release keystore path, resolved once. Null/blank means "no signing material", which is
+ * fine for a sideload APK but must NEVER produce a Play bundle — see the bundleRelease
+ * guard after the android { } block.
+ */
+val releaseKeystorePath: String? = System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotEmpty() }
+
 android {
     namespace = "com.atvriders.wsprtxrx"
     compileSdk = 36
@@ -29,9 +36,8 @@ android {
     signingConfigs {
         create("release") {
             // Populated from environment in CI when keystore secrets are present.
-            val storeFilePath = System.getenv("KEYSTORE_FILE")
-            if (!storeFilePath.isNullOrEmpty()) {
-                storeFile = file(storeFilePath)
+            if (releaseKeystorePath != null) {
+                storeFile = file(releaseKeystorePath)
                 storeType = "PKCS12"
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
@@ -49,8 +55,9 @@ android {
                 "proguard-rules.pro"
             )
             // Use the release keystore if CI provided one, else fall back to debug
-            // signing so the APK is always installable without secrets.
-            signingConfig = if (!System.getenv("KEYSTORE_FILE").isNullOrEmpty()) {
+            // signing so the sideload APK is always installable without secrets.
+            // The AAB is protected separately — see the bundleRelease guard below.
+            signingConfig = if (releaseKeystorePath != null) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
@@ -82,6 +89,33 @@ android {
             isReturnDefaultValues = true
         }
     }
+}
+
+/**
+ * B6: make it impossible to produce a debug-signed Play bundle.
+ *
+ * The buildType selector above falls back to the debug signing config when no keystore
+ * is present, which is what put three debug-signed artifacts under the production
+ * applicationId on public GitHub Releases. `assembleRelease` keeps that fallback on
+ * purpose (a sideload APK must be installable without secrets), but the AAB is what gets
+ * uploaded to Play — and Play rejects it with "You uploaded an APK or Android App Bundle
+ * that was signed in debug mode", silently, only after a human has already uploaded.
+ *
+ * tasks.matching { }.configureEach avoids eager task realisation, and doFirst means IDE
+ * sync, assembleRelease and testReleaseUnitTest are unaffected — only actually *running*
+ * a bundle task fails.
+ */
+if (releaseKeystorePath == null) {
+    tasks.matching { it.name == "bundleRelease" || it.name == "packageReleaseBundle" }
+        .configureEach {
+            doFirst {
+                throw GradleException(
+                    "Refusing to build a debug-signed Play bundle: KEYSTORE_FILE is unset. " +
+                        "Set KEYSTORE_FILE/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD, or build " +
+                        "assembleRelease if you only need a sideload APK.",
+                )
+            }
+        }
 }
 
 // Room schema export location (exportSchema = true on AppDatabase). The generated v2

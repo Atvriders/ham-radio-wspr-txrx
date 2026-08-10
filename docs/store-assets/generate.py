@@ -191,7 +191,13 @@ def make_icon(out, S=512, SS=4):
     img = Image.alpha_composite(img, nodes)
 
     img = vignette(img, strength=120, soft=0.11)
-    img.convert('RGB').resize((S, S), Image.LANCZOS).save(out)
+    # Play's app-icon spec is "32-bit PNG (with alpha)". convert('RGB') dropped the
+    # alpha channel that lines 131-193 build up and emitted colour type 2 (truecolour,
+    # no alpha), which the Console form can reject. RGBA keeps the channel; the artwork
+    # is fully opaque anyway, so this also satisfies Google's "no transparency" design
+    # guidance and the rendered pixels are byte-for-byte identical.
+    # NOTE: the feature graphic below must STAY 24-bit no-alpha — do not copy this.
+    img.convert('RGBA').resize((S, S), Image.LANCZOS).save(out)
 
 # ------------------------------------------------------- FEATURE GRAPHIC
 def make_feature(out, W=1024, H=500, SS=3):
@@ -311,4 +317,11 @@ if __name__ == '__main__':
         im = Image.open(p)
         import os
         print(p, im.size, im.mode, f'{os.path.getsize(p)/1024:.0f} KB')
+    # Assert the two different Play specs so a future edit cannot silently swap them.
+    icon = Image.open(OUT_DIR + 'play-icon-512.png')
+    assert icon.mode == 'RGBA', f'Play icon must be 32-bit RGBA, got {icon.mode}'
+    assert icon.size == (512, 512), icon.size
+    feature = Image.open(OUT_DIR + 'feature-graphic-1024x500.png')
+    assert feature.mode == 'RGB', f'feature graphic must be 24-bit no-alpha, got {feature.mode}'
+    assert feature.size == (1024, 500), feature.size
     print('done')
